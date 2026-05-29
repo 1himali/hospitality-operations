@@ -22,7 +22,11 @@ You are working on an existing Spring Boot 3.5.14 + Java 21 + Maven project call
 4. Add a new Inventory Management module for Lodging and Restaurant.
 5. Implement Reservation and Table workflows.
 6. Build a project-aware AI Assistant.
-7. Enforce a consistent light-theme UI and reliable selection behavior across the app.
+7. Update Rooms search maintenance status workflow.
+8. Enforce a consistent light-theme UI and reliable selection behavior across the app.
+9. Add API usage logging / metrics.
+10. Add third-party mock integration.
+11. Add Analytics.
 
 ## Product requirements
 
@@ -32,6 +36,10 @@ You are working on an existing Spring Boot 3.5.14 + Java 21 + Maven project call
 * **Inventory:** Must support both Lodging and Restaurant Inventory with full CRUD, search, filtering, status tracking, quantity management, and validation.
 * **Assistant:** Must query and restrict answers to internal app-managed project data sources only.
 * **UI/UX:** Selection must work reliably across all selectable UI components.
+* **Rooms search:** Remove the obsolete "maintained" filter, migrate "maint" content into "under maintenance", and delete "maint".
+* **API metrics:** Track API usage, latency, and failures in a way that fits the existing application structure.
+* **Mock integration:** Support isolated third-party mocks for development and testing without affecting production behavior.
+* **Analytics:** Add analytics views or aggregations based on internal project data only.
 
 ## Suggested implementation order
 
@@ -41,7 +49,11 @@ You are working on an existing Spring Boot 3.5.14 + Java 21 + Maven project call
 4. Invoice History (Universal module replacement for Reports)
 5. Inventory Module (Lodging and Restaurant)
 6. Reservation and Table Workflows
-7. Project-aware AI Assistant
+7. Rooms Search Maintenance Status Cleanup
+8. Project-aware AI Assistant
+9. API Usage Logging / Metrics
+10. Third-party Mock Integration
+11. Analytics
 
 ## Coding style
 

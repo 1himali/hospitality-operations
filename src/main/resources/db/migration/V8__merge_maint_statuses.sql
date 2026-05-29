@@ -1,0 +1,1 @@
+UPDATE rooms SET status = 'UNDER_MAINTENANCE' WHERE status IN ('MAINT', 'MAINTAINED');

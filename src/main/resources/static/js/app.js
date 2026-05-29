@@ -276,7 +276,7 @@ async function loadRooms() {
     const checked = [...$$('#room-filter-checks input:checked')].map(c => c.value);
     try {
         const allRooms = await api(API.rooms);
-        if (checked.length > 0 && checked.length < 6) {
+        if (checked.length > 0 && checked.length < 4) {
             roomsData = allRooms.filter(r => checked.includes(r.status));
         } else {
             roomsData = allRooms;
@@ -290,8 +290,6 @@ function roomBadgeClass(status) {
         case 'VACANT': return 'badge-filled';
         case 'OCCUPIED': return 'badge-outlined';
         case 'RESERVED': return 'badge-dashed';
-        case 'MAINT': return 'badge-filled';
-        case 'MAINTAINED': return 'badge-outlined';
         case 'UNDER_MAINTENANCE': return 'badge-outlined';
         default: return 'badge-outlined';
     }
@@ -311,7 +309,7 @@ function renderRoomGrid() {
         return;
     }
     grid.innerHTML = data.map(r => {
-        const showIssue = r.status === 'MAINT' || r.status === 'UNDER_MAINTENANCE' || r.status === 'MAINTAINED';
+        const showIssue = r.status === 'UNDER_MAINTENANCE';
         return `
         <div class="room-card">
             <div class="room-card-header">
