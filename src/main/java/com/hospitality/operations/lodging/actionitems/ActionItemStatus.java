@@ -1,5 +1,6 @@
 package com.hospitality.operations.lodging.actionitems;
 
-public class ActionItemStatus {
-
+public enum ActionItemStatus {
+    TODO,
+    COMPLETED
 }

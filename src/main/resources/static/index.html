@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,10 +20,6 @@
         </button>
         <h1 class="topbar-title" id="topbar-title">MANAGEMENT SYSTEM</h1>
         <div class="topbar-actions">
-            <button class="topbar-btn" id="btn-theme" title="Toggle theme">
-                <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-            </button>
             <button class="topbar-btn" id="btn-logout" title="Logout" style="background:#c0392b;color:#ffffff;border-radius:4px;">LOGOUT</button>
         </div>
     </header>
@@ -31,7 +27,7 @@
     <!-- ══════════════════════════════════════
          LOGIN PAGE
          ══════════════════════════════════════ -->
-    <div id="login-page" style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg-app);">
+    <div id="login-page" style="display:flex; align-items:center; justify-content:center; position:fixed; inset:0; z-index:500; background:var(--bg-app);">
         <div style="background:var(--bg-surface); padding:48px 32px; border-radius:8px; width:100%; max-width:400px; box-shadow:var(--shadow-lg);">
             <h1 style="text-align:center; font-size:var(--fs-2xl); font-weight:900; letter-spacing:0.06em; margin-bottom:32px; text-transform:uppercase;">LOGIN</h1>
             <form id="login-form">
@@ -140,6 +136,7 @@
                             <label class="filter-check"><input type="checkbox" value="RESERVED"><span class="checkmark"></span>RESERVED</label>
                             <label class="filter-check"><input type="checkbox" value="MAINT"><span class="checkmark"></span>MAINT</label>
                         </div>
+                        <input type="text" id="room-search" class="filter-search" placeholder="SEARCH ROOMS...">
                         <hr class="filter-divider">
                         <button class="btn btn-outline btn-block" id="btn-clear-room-filters">CLEAR FILTERS</button>
                     </div>
@@ -164,8 +161,14 @@
                     <div class="filter-panel" id="action-filter-panel">
                         <h3 class="filter-heading">FILTERS</h3>
                         <div class="filter-list" id="action-category-filters">
-                            <button class="filter-list-item active">ALL</button>
+                            <button class="filter-list-item active" data-value="">ALL</button>
+                            <button class="filter-list-item" data-value="CLEANING">CLEANING</button>
+                            <button class="filter-list-item" data-value="MAINTENANCE">MAINTENANCE</button>
+                            <button class="filter-list-item" data-value="REPAIR">REPAIR</button>
+                            <button class="filter-list-item" data-value="INSPECTION">INSPECTION</button>
+                            <button class="filter-list-item" data-value="OTHER">OTHER</button>
                         </div>
+                        <input type="text" id="action-search" class="filter-search" placeholder="SEARCH TASKS...">
                     </div>
                     <div class="page-main">
                         <div class="page-toolbar">
@@ -228,6 +231,7 @@
                             <button class="filter-list-item" data-value="DESSERTS">DESSERTS</button>
                             <button class="filter-list-item" data-value="BEVERAGES">BEVERAGES</button>
                         </div>
+                        <input type="text" id="menu-search" class="filter-search" placeholder="SEARCH MENU...">
                     </div>
                     <div class="page-main">
                         <div class="page-toolbar">
@@ -253,13 +257,20 @@
                             <button class="filter-list-item" data-value="CANCELLED">CANCELLED</button>
                             <button class="filter-list-item" data-value="COMPLETED">COMPLETED</button>
                         </div>
+                        <input type="text" id="order-search" class="filter-search" placeholder="SEARCH ORDERS...">
                         <hr class="filter-divider">
                         <h4 class="filter-subheading">DATE RANGE</h4>
                         <select class="filter-select" id="order-date-filter">
+                            <option value="ALL">ALL</option>
                             <option value="TODAY">TODAY</option>
                             <option value="WEEK">THIS WEEK</option>
                             <option value="MONTH">THIS MONTH</option>
+                            <option value="CUSTOM">CUSTOM RANGE</option>
                         </select>
+                        <div id="order-custom-date-range" style="display:none;margin-top:8px;flex-direction:column;gap:6px">
+                            <input type="date" id="order-date-from" class="input" style="width:100%;margin:0;font-size:11px;padding:6px 8px">
+                            <input type="date" id="order-date-to" class="input" style="width:100%;margin:0;font-size:11px;padding:6px 8px">
+                        </div>
                     </div>
                     <div class="page-main">
                         <div class="page-toolbar">
@@ -297,8 +308,116 @@
 
             <!-- ═══ PAGE: BILLING ═══ -->
             <section class="page" id="page-billing">
-                <div class="billing-receipt" id="billing-receipt">
-                    <div class="empty-state"><div class="empty-state-icon">🧾</div><p>Billing view will be available once the backend is implemented.<br>Select an order to generate a bill.</p></div>
+                <div class="page-main" style="max-width:720px;margin:0 auto;width:100%">
+                    <div class="page-toolbar">
+                        <h2 class="page-heading" style="margin:0">BILLING</h2>
+                    </div>
+
+                    <!-- Cart view -->
+                    <div id="billing-cart-view">
+                        <!-- Linked order info -->
+                        <div class="billing-section" id="billing-order-section" style="display:none">
+                            <h3 class="billing-section-title" style="display:flex;justify-content:space-between;align-items:center">
+                                <span>ORDER</span>
+                                <button class="btn btn-sm btn-outline" id="btn-remove-billing-order" style="font-size:10px;color:var(--danger)">REMOVE</button>
+                            </h3>
+                            <div id="billing-order-info" class="billing-item-row" style="font-weight:700">
+                                <span id="billing-order-ref"></span>
+                                <span id="billing-order-table"></span>
+                                <span id="billing-order-total"></span>
+                            </div>
+                            <div id="billing-order-items" class="billing-items-list" style="margin-top:8px;padding-left:12px;border-left:2px solid var(--border-light)"></div>
+                        </div>
+
+                        <div class="billing-section">
+                            <h3 class="billing-section-title">ROOMS TO BILL</h3>
+                            <div id="billing-rooms-list" class="billing-items-list"></div>
+                            <div class="empty-state" id="billing-no-rooms" style="padding:16px 0"><p style="margin:0">No rooms selected.</p></div>
+                        </div>
+
+                        <!-- Dropdown: Add room -->
+                        <div class="billing-section" style="background:var(--bg-surface-alt);border-radius:var(--radius);padding:16px;margin-bottom:12px">
+                            <h3 class="billing-section-title" style="margin-bottom:8px">ADD ROOM</h3>
+                            <input type="text" id="billing-room-search" class="filter-search" placeholder="FILTER ROOMS..." style="margin-bottom:8px">
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <select id="billing-room-select" style="flex:1;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);font-weight:600">
+                                    <option value="">— SELECT ROOM —</option>
+                                </select>
+                                <input type="number" id="billing-room-nights" value="1" min="1" style="width:50px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);font-weight:600;text-align:center">
+                                <button class="btn btn-outline btn-sm" id="btn-add-billing-room" style="white-space:nowrap">+ ADD ROOM</button>
+                            </div>
+                        </div>
+
+                        <div class="billing-section">
+                            <h3 class="billing-section-title">BILLABLE ITEMS</h3>
+                            <div id="billing-items-list" class="billing-items-list"></div>
+                            <div class="empty-state" id="billing-no-items" style="padding:8px 0;display:none"><p style="margin:0;font-size:var(--fs-sm)">No items added.</p></div>
+                        </div>
+
+                        <!-- Dropdown: Select from menu -->
+                        <div class="billing-section" style="background:var(--bg-surface-alt);border-radius:var(--radius);padding:16px;margin-bottom:12px">
+                            <h3 class="billing-section-title" style="margin-bottom:8px">ADD FROM MENU</h3>
+                            <input type="text" id="billing-menu-search" class="filter-search" placeholder="FILTER MENU ITEMS..." style="margin-bottom:8px">
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <select id="billing-menu-select" style="flex:1;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);font-weight:600">
+                                    <option value="">— SELECT MENU ITEM —</option>
+                                </select>
+                                <input type="number" id="billing-menu-qty" value="1" min="1" style="width:50px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);font-weight:600;text-align:center">
+                                <button class="btn btn-outline btn-sm" id="btn-add-billing-menu" style="white-space:nowrap">+ ADD ITEM</button>
+                            </div>
+                        </div>
+
+                        <!-- Manual entry mode -->
+                        <div class="billing-section" style="background:var(--bg-surface-alt);border-radius:var(--radius);padding:16px;margin-bottom:12px">
+                            <h3 class="billing-section-title" style="margin-bottom:8px">MANUAL ENTRY</h3>
+                            <div class="billing-add-item-form" style="padding:0">
+                                <input type="text" id="billing-item-desc" placeholder="Description" class="input" style="flex:1;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm)">
+                                <input type="number" id="billing-item-qty" placeholder="Qty" class="input" style="width:50px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);text-align:center" value="1" min="1">
+                                <input type="number" id="billing-item-price" placeholder="Price" class="input" style="width:90px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm)" step="0.01" min="0">
+                                <button class="btn btn-outline btn-sm" id="btn-add-billing-item">+ ADD</button>
+                            </div>
+                        </div>
+
+                        <!-- Load from existing order -->
+                        <div class="billing-section" style="background:var(--bg-surface-alt);border-radius:var(--radius);padding:16px;margin-bottom:12px">
+                            <h3 class="billing-section-title" style="margin-bottom:8px">BILL EXISTING ORDER</h3>
+                            <input type="text" id="billing-order-search" class="filter-search" placeholder="FILTER ORDERS..." style="margin-bottom:8px">
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <select id="billing-order-select" style="flex:1;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);font-weight:600">
+                                    <option value="">— SELECT ORDER —</option>
+                                </select>
+                                <button class="btn btn-outline btn-sm" id="btn-load-billing-order">LOAD ITEMS</button>
+                            </div>
+                        </div>
+
+                        <div class="billing-section">
+                            <div class="billing-totals">
+                                <div class="billing-total-row"><span>SUBTOTAL</span><span id="billing-subtotal">₹0.00</span></div>
+                                <div class="billing-total-row"><span>TAX (8.875%)</span><span id="billing-tax">₹0.00</span></div>
+                                <div class="billing-total-row">
+                                    <span>DISCOUNT</span>
+                                    <input type="number" id="billing-discount" value="0" min="0" step="0.01" class="input" style="width:120px;text-align:right;margin:0">
+                                </div>
+                                <div class="billing-total-row">
+                                    <span>SERVER</span>
+                                    <input type="text" id="billing-server-name" placeholder="Optional" class="input" style="width:140px;text-align:right;margin:0;font-size:var(--fs-sm)">
+                                </div>
+                                <div class="billing-total-row total-due"><span>TOTAL DUE</span><span id="billing-total">₹0.00</span></div>
+                            </div>
+                        </div>
+
+                        <div style="text-align:center;margin-top:20px">
+                            <button class="btn btn-primary btn-lg" id="btn-generate-bill" style="padding:12px 48px">GENERATE INVOICE</button>
+                        </div>
+                    </div>
+
+                    <!-- Receipt view -->
+                    <div id="billing-receipt-view" style="display:none">
+                        <div class="billing-receipt" id="billing-receipt"></div>
+                        <div style="text-align:center;margin-top:16px">
+                            <button class="btn btn-outline" id="btn-new-bill">NEW INVOICE</button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -384,6 +503,89 @@
                 <div class="form-actions">
                     <button type="button" class="btn btn-outline" onclick="closeModal('menu-modal')">CANCEL</button>
                     <button type="submit" class="btn btn-primary" id="menu-submit-btn">SAVE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         MODAL: Action Item Form
+         ══════════════════════════════════════ -->
+    <div class="modal-overlay" id="action-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="action-modal-title">ADD TASK</h2>
+                <button class="modal-close" onclick="closeModal('action-modal')">&times;</button>
+            </div>
+            <form id="action-form" class="modal-form">
+                <input type="hidden" id="action-edit-id">
+                <div class="form-group">
+                    <label>TITLE *</label>
+                    <input type="text" id="action-title" maxlength="200" required placeholder="Clean room 101">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>CATEGORY *</label>
+                        <select id="action-category" required>
+                            <option value="CLEANING">CLEANING</option>
+                            <option value="MAINTENANCE">MAINTENANCE</option>
+                            <option value="REPAIR">REPAIR</option>
+                            <option value="INSPECTION">INSPECTION</option>
+                            <option value="OTHER">OTHER</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>STATUS</label>
+                        <select id="action-status-input">
+                            <option value="TODO">TO DO</option>
+                            <option value="COMPLETED">COMPLETED</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>DESCRIPTION</label>
+                    <textarea id="action-description" rows="3" maxlength="1000" placeholder="Details about this task..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('action-modal')">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" id="action-submit-btn">SAVE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         MODAL: Order Form
+         ══════════════════════════════════════ -->
+    <div class="modal-overlay" id="order-modal">
+        <div class="modal" style="max-width:560px">
+            <div class="modal-header">
+                <h2 class="modal-title" id="order-modal-title">CREATE ORDER</h2>
+                <button class="modal-close" onclick="closeModal('order-modal')">&times;</button>
+            </div>
+            <form id="order-form" class="modal-form">
+                <input type="hidden" id="order-edit-id">
+                <div class="form-row">
+                    <div class="form-group"><label>TABLE</label>
+                        <select id="order-table" style="padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm);font-weight:600">
+                            <option value="">— NO TABLE —</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>ORDER REFERENCE</label><input type="text" id="order-reference" maxlength="20" placeholder="Auto-generated"></div>
+                </div>
+                <div class="form-group">
+                    <label style="display:flex;justify-content:space-between;align-items:center">
+                        <span>ORDER ITEMS</span>
+                        <button type="button" class="btn btn-sm btn-outline" id="btn-add-order-item" style="font-size:10px;padding:4px 10px">+ ADD ITEM</button>
+                    </label>
+                    <div id="order-items-container" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
+                </div>
+                <div style="text-align:right;font-weight:800;font-size:var(--fs-lg);padding:8px 0;border-top:2px solid var(--border);margin-top:8px">
+                    TOTAL: <span id="order-form-total">₹0.00</span>
+                </div>
+                <div class="form-actions" style="padding:12px 0 0">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('order-modal')">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" id="order-submit-btn">SAVE ORDER</button>
                 </div>
             </form>
         </div>

@@ -1,0 +1,2 @@
+ALTER TABLE bills ALTER COLUMN order_id DROP NOT NULL;
+ALTER TABLE bills DROP CONSTRAINT IF EXISTS bills_order_id_fkey;

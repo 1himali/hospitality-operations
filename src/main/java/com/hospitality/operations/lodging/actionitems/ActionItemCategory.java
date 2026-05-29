@@ -1,5 +1,9 @@
 package com.hospitality.operations.lodging.actionitems;
 
-public class ActionItemCategory {
-
+public enum ActionItemCategory {
+    CLEANING,
+    MAINTENANCE,
+    REPAIR,
+    INSPECTION,
+    OTHER
 }
