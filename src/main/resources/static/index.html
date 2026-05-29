@@ -72,7 +72,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     TASKS
                 </button>
-                <button class="sidebar-item" data-target="home">
+                <button class="sidebar-item" data-target="inventory">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>
                     INVENTORY
                 </button>
@@ -469,7 +469,121 @@
                 </div>
             </section>
 
+            <!-- ═══ PAGE: INVENTORY ═══ -->
+            <section class="page" id="page-inventory">
+                <div class="page-with-filters">
+                    <div class="filter-panel">
+                        <h3 class="filter-heading">TYPE</h3>
+                        <div class="filter-list" id="inv-type-filters">
+                            <button class="filter-list-item active" data-value="">ALL</button>
+                            <button class="filter-list-item" data-value="LODGING">LODGING</button>
+                            <button class="filter-list-item" data-value="RESTAURANT">RESTAURANT</button>
+                        </div>
+                        <hr class="filter-divider">
+                        <h3 class="filter-heading">STATUS</h3>
+                        <div class="filter-list" id="inv-status-filters">
+                            <button class="filter-list-item active" data-value="">ALL</button>
+                            <button class="filter-list-item" data-value="IN_STOCK">IN STOCK</button>
+                            <button class="filter-list-item" data-value="LOW_STOCK">LOW STOCK</button>
+                            <button class="filter-list-item" data-value="OUT_OF_STOCK">OUT OF STOCK</button>
+                            <button class="filter-list-item" data-value="DISCONTINUED">DISCONTINUED</button>
+                        </div>
+                        <hr class="filter-divider">
+                        <h3 class="filter-heading">CATEGORY</h3>
+                        <div class="filter-list" id="inv-category-filters">
+                            <button class="filter-list-item active" data-value="">ALL</button>
+                            <button class="filter-list-item" data-value="LINEN">LINEN</button>
+                            <button class="filter-list-item" data-value="FURNITURE">FURNITURE</button>
+                            <button class="filter-list-item" data-value="APPLIANCE">APPLIANCE</button>
+                            <button class="filter-list-item" data-value="CONSUMABLE">CONSUMABLE</button>
+                            <button class="filter-list-item" data-value="UTENSIL">UTENSIL</button>
+                            <button class="filter-list-item" data-value="INGREDIENT">INGREDIENT</button>
+                            <button class="filter-list-item" data-value="OTHER">OTHER</button>
+                        </div>
+                        <hr class="filter-divider">
+                        <input type="text" id="inventory-search" class="filter-search" placeholder="SEARCH INVENTORY...">
+                    </div>
+                    <div class="page-main">
+                        <div class="page-toolbar">
+                            <h2 class="page-heading" style="margin:0">INVENTORY</h2>
+                            <div class="page-toolbar-actions">
+                                <button class="btn btn-primary" id="btn-add-inventory">+ ADD ITEM</button>
+                            </div>
+                        </div>
+                        <div class="card-grid" id="inventory-grid">
+                            <div class="loading-state">Loading inventory...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </main>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         MODAL: Inventory Form
+         ══════════════════════════════════════ -->
+    <div class="modal-overlay" id="inv-form-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="inv-form-title">ADD INVENTORY ITEM</h2>
+                <button class="modal-close" onclick="closeModal('inv-form-modal')">&times;</button>
+            </div>
+            <form id="inv-form">
+                <input type="hidden" id="inv-edit-id">
+                <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+                    <div class="form-group">
+                        <label>NAME</label>
+                        <input type="text" id="inv-name" class="input" required maxlength="200">
+                    </div>
+                    <div class="form-row" style="display:flex;gap:12px">
+                        <div class="form-group" style="flex:1">
+                            <label>TYPE</label>
+                            <select id="inv-type" class="input" required>
+                                <option value="">— SELECT —</option>
+                                <option value="LODGING">LODGING</option>
+                                <option value="RESTAURANT">RESTAURANT</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>CATEGORY</label>
+                            <select id="inv-category" class="input" required>
+                                <option value="">— SELECT —</option>
+                                <option value="LINEN">LINEN</option>
+                                <option value="FURNITURE">FURNITURE</option>
+                                <option value="APPLIANCE">APPLIANCE</option>
+                                <option value="CONSUMABLE">CONSUMABLE</option>
+                                <option value="UTENSIL">UTENSIL</option>
+                                <option value="INGREDIENT">INGREDIENT</option>
+                                <option value="OTHER">OTHER</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row" style="display:flex;gap:12px">
+                        <div class="form-group" style="flex:1">
+                            <label>QUANTITY</label>
+                            <input type="number" id="inv-qty" class="input" min="0" value="0" required>
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>REORDER LEVEL</label>
+                            <input type="number" id="inv-reorder" class="input" min="0" value="5">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>UNIT</label>
+                            <input type="text" id="inv-unit" class="input" value="pcs" maxlength="20">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>NOTES</label>
+                        <textarea id="inv-notes" class="input" style="resize:vertical;min-height:40px" maxlength="1000"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions" style="padding:16px 0 0">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('inv-form-modal')">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" id="inv-submit-btn">SAVE</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- ══════════════════════════════════════

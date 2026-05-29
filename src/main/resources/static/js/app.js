@@ -5,7 +5,9 @@
         → RESTAURANT → MENU MGMT / ORDER MGMT / TABLE MGMT / BILLING
    ═══════════════════════════════════════════ */
 
-const API = { rooms: '/api/v1/rooms', menu: '/api/v1/menu', auth: '/api/v1/auth', actionItems: '/api/v1/action-items', bills: '/api/v1/bills', orders: '/api/v1/orders', tables: '/api/v1/tables' };
+const API = { rooms: '/api/v1/rooms', menu: '/api/v1/menu', auth: '/api/v1/auth', actionItems: '/api/v1/action-items', bills: '/api/v1/bills', orders: '/api/v1/orders',     tables: '/api/v1/tables',
+    inventory: '/api/v1/inventory'
+};
 
 // ── Helpers ───────────────────────────────
 const $ = sel => document.querySelector(sel);
@@ -157,7 +159,7 @@ const navHistory = [];
 let currentPage = 'home';
 
 // Pages that show the sidebar
-const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'action-items', 'invoice-history']);
+const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'action-items', 'invoice-history', 'inventory']);
 
 // Map pages → topbar titles
 const pageTitles = {
@@ -171,6 +173,7 @@ const pageTitles = {
     'table-mgmt': 'MANAGEMENT SYSTEM',
     'billing': 'BILLING',
     'invoice-history': 'INVOICE HISTORY',
+    'inventory': 'INVENTORY',
 };
 
 // Map pages → parent pages (for back button)
@@ -184,6 +187,7 @@ const pageParent = {
     'table-mgmt': 'restaurant',
     'billing': 'restaurant',
     'invoice-history': 'home',
+    'inventory': 'home',
 };
 
 // Map pages → active sidebar item
@@ -195,6 +199,7 @@ const sidebarActive = {
     'table-mgmt': 'restaurant',
     'action-items': 'action-items',
     'invoice-history': 'invoice-history',
+    'inventory': 'inventory',
 };
 
 function navigate(page) {
@@ -238,6 +243,7 @@ function showPage(page) {
     if (page === 'billing') loadBillingPage();
     if (page === 'order-mgmt') loadOrders();
     if (page === 'invoice-history') loadInvoiceHistory();
+    if (page === 'inventory') loadInventory();
 }
 
 // Back button
@@ -685,6 +691,10 @@ $('#btn-confirm-delete').addEventListener('click', async () => {
             await api(`${API.orders}/${id}`, { method: 'DELETE' });
             toast('Order deleted');
             loadOrders();
+        } else if (type === 'inventory') {
+            await api(`${API.inventory}/${id}`, { method: 'DELETE' });
+            toast('Inventory item deleted');
+            loadInventory();
         }
     } catch (e) { /* toast shown */ }
     closeModal('delete-modal');
@@ -1654,6 +1664,188 @@ document.getElementById('inv-date-to')?.addEventListener('change', () => loadInv
 document.getElementById('inv-search')?.addEventListener('input', function() {
     invSearchTerm = this.value.toLowerCase().trim();
     renderInvoiceHistory();
+});
+
+// ═══════════════════════════════════════════
+//  INVENTORY MODULE
+// ═══════════════════════════════════════════
+let inventoryData = [];
+let inventoryTypeFilter = '';
+let inventoryStatusFilter = '';
+let inventoryCategoryFilter = '';
+let inventorySearchTerm = '';
+
+async function loadInventory() {
+    const params = new URLSearchParams();
+    if (inventoryTypeFilter) params.set('type', inventoryTypeFilter);
+    if (inventoryStatusFilter) params.set('status', inventoryStatusFilter);
+    if (inventoryCategoryFilter) params.set('category', inventoryCategoryFilter);
+    const qs = params.toString();
+    const url = qs ? `${API.inventory}?${qs}` : API.inventory;
+    try {
+        inventoryData = await api(url);
+        renderInventoryGrid();
+    } catch (e) { /* toast shown */ }
+}
+
+function renderInventoryGrid() {
+    const grid = document.getElementById('inventory-grid');
+    if (!grid) return;
+    const data = inventorySearchTerm
+        ? inventoryData.filter(item =>
+            (item.name && item.name.toLowerCase().includes(inventorySearchTerm)) ||
+            (item.category && item.category.toLowerCase().includes(inventorySearchTerm)) ||
+            (item.unit && item.unit.toLowerCase().includes(inventorySearchTerm)) ||
+            (item.notes && item.notes.toLowerCase().includes(inventorySearchTerm))
+          )
+        : inventoryData;
+
+    if (!data.length) {
+        grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><p>No inventory items found.</p></div>';
+        return;
+    }
+
+    function invBadgeClass(s) {
+        if (s === 'IN_STOCK') return 'badge-filled';
+        if (s === 'LOW_STOCK') return 'badge-outlined';
+        if (s === 'OUT_OF_STOCK') return 'badge-unavailable';
+        return 'badge-outlined';
+    }
+
+    function fmtStatus(s) {
+        return s.replace(/_/g, ' ');
+    }
+
+    grid.innerHTML = data.map(item => `
+        <div class="room-card">
+            <div class="room-card-header">
+                <span class="room-card-id">${item.name}</span>
+                <span class="badge ${invBadgeClass(item.status)}">${fmtStatus(item.status)}</span>
+            </div>
+            <div class="room-card-body">
+                <div class="room-card-row"><span class="room-card-label">TYPE:</span><span class="room-card-value">${item.type}</span></div>
+                <div class="room-card-row"><span class="room-card-label">CATEGORY:</span><span class="room-card-value">${item.category}</span></div>
+                <div class="room-card-row"><span class="room-card-label">QTY:</span><span class="room-card-value">${item.quantity} ${item.unit}</span></div>
+                <div class="room-card-row"><span class="room-card-label">REORDER:</span><span class="room-card-value">${item.reorderLevel} ${item.unit}</span></div>
+                ${item.notes ? `<div class="room-card-row"><span class="room-card-label">NOTES:</span><span class="room-card-value">${item.notes}</span></div>` : ''}
+            </div>
+            <div class="room-card-actions" style="margin-top:12px;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
+                ${item.status !== 'DISCONTINUED' ? `
+                    <button class="btn btn-outline btn-sm" onclick="adjustInvQty(${item.id}, 1)" style="color:var(--success)">+1</button>
+                    <button class="btn btn-outline btn-sm" onclick="adjustInvQty(${item.id}, -1)" style="color:var(--danger)">-1</button>
+                ` : ''}
+                <button class="btn btn-outline btn-sm" onclick="editInventoryItem(${item.id})">EDIT</button>
+                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="confirmDeleteInventory(${item.id},'${item.name.replace(/'/g,"\\'")}')">DELETE</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+window.adjustInvQty = async function(id, delta) {
+    try {
+        const updated = await api(`${API.inventory}/${id}/quantity?adjustment=${delta}`, { method: 'PATCH' });
+        const idx = inventoryData.findIndex(i => i.id === id);
+        if (idx >= 0) inventoryData[idx] = updated;
+        renderInventoryGrid();
+        toast(delta > 0 ? 'Stock increased' : 'Stock decreased');
+    } catch (e) { /* toast shown */ }
+};
+
+window.editInventoryItem = function(id) {
+    const item = inventoryData.find(i => i.id === id);
+    if (!item) return;
+    document.getElementById('inv-form-title').textContent = 'EDIT INVENTORY ITEM';
+    document.getElementById('inv-submit-btn').textContent = 'UPDATE';
+    document.getElementById('inv-edit-id').value = id;
+    document.getElementById('inv-name').value = item.name;
+    document.getElementById('inv-type').value = item.type;
+    document.getElementById('inv-category').value = item.category;
+    document.getElementById('inv-qty').value = item.quantity;
+    document.getElementById('inv-reorder').value = item.reorderLevel;
+    document.getElementById('inv-unit').value = item.unit;
+    document.getElementById('inv-notes').value = item.notes || '';
+    openModal('inv-form-modal');
+};
+
+window.confirmDeleteInventory = function(id, name) {
+    document.getElementById('delete-msg').textContent = 'Delete "' + name + '" from inventory?';
+    window.pendingDelete = { type: 'inventory', id };
+    openModal('delete-modal');
+};
+
+// Add button
+document.getElementById('btn-add-inventory')?.addEventListener('click', () => {
+    document.getElementById('inv-form-title').textContent = 'ADD INVENTORY ITEM';
+    document.getElementById('inv-submit-btn').textContent = 'SAVE';
+    document.getElementById('inv-form').reset();
+    document.getElementById('inv-edit-id').value = '';
+    document.getElementById('inv-qty').value = '0';
+    document.getElementById('inv-reorder').value = '5';
+    document.getElementById('inv-unit').value = 'pcs';
+    openModal('inv-form-modal');
+});
+
+// Form submit
+document.getElementById('inv-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editId = document.getElementById('inv-edit-id').value;
+    const body = {
+        name: document.getElementById('inv-name').value.trim(),
+        type: document.getElementById('inv-type').value,
+        category: document.getElementById('inv-category').value,
+        quantity: parseInt(document.getElementById('inv-qty').value) || 0,
+        reorderLevel: parseInt(document.getElementById('inv-reorder').value) || 5,
+        unit: document.getElementById('inv-unit').value.trim() || 'pcs',
+        notes: document.getElementById('inv-notes').value.trim() || null
+    };
+    if (!body.name || !body.type || !body.category) { toast('Fill required fields', 'error'); return; }
+    try {
+        if (editId) {
+            await api(`${API.inventory}/${editId}`, { method: 'PUT', body: JSON.stringify(body) });
+            toast('Item updated');
+        } else {
+            await api(API.inventory, { method: 'POST', body: JSON.stringify(body) });
+            toast('Item created');
+        }
+        closeModal('inv-form-modal');
+        loadInventory();
+    } catch (e) { /* toast shown */ }
+});
+
+// Type filter
+$$('#inv-type-filters .filter-list-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+        $$('#inv-type-filters .filter-list-item').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        inventoryTypeFilter = btn.dataset.value || '';
+        loadInventory();
+    });
+});
+
+// Status filter
+$$('#inv-status-filters .filter-list-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+        $$('#inv-status-filters .filter-list-item').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        inventoryStatusFilter = btn.dataset.value || '';
+        loadInventory();
+    });
+});
+
+// Category filter
+$$('#inv-category-filters .filter-list-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+        $$('#inv-category-filters .filter-list-item').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        inventoryCategoryFilter = btn.dataset.value || '';
+        loadInventory();
+    });
+});
+
+// Search
+document.getElementById('inventory-search')?.addEventListener('input', function() {
+    inventorySearchTerm = this.value.toLowerCase().trim();
+    renderInventoryGrid();
 });
 
 // ═══════════════════════════════════════════
