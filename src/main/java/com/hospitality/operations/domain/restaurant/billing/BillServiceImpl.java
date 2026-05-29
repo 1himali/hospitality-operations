@@ -2,9 +2,12 @@ package com.hospitality.operations.domain.restaurant.billing;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -160,6 +163,21 @@ public class BillServiceImpl implements BillService {
                     return BillMapper.toDto(bill, lineItems);
                 })
                 .toList();
+    }
+
+    @Override
+    public Page<BillResponseDto> getBills(Instant dateFrom, Instant dateTo, Pageable pageable) {
+        Page<Bill> billPage;
+        if (dateFrom != null && dateTo != null) {
+            billPage = billRepository.findAllByCreatedAtBetween(dateFrom, dateTo, pageable);
+        } else if (dateFrom != null) {
+            billPage = billRepository.findAllByCreatedAtAfter(dateFrom, pageable);
+        } else if (dateTo != null) {
+            billPage = billRepository.findAllByCreatedAtBefore(dateTo, pageable);
+        } else {
+            billPage = billRepository.findAll(pageable);
+        }
+        return billPage.map(bill -> BillMapper.toDto(bill, List.of()));
     }
 
     private List<BillResponseDto.LineItemDto> buildLineItems(Long orderId) {

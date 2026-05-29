@@ -157,7 +157,7 @@ const navHistory = [];
 let currentPage = 'home';
 
 // Pages that show the sidebar
-const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'action-items']);
+const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'action-items', 'invoice-history']);
 
 // Map pages → topbar titles
 const pageTitles = {
@@ -170,6 +170,7 @@ const pageTitles = {
     'order-mgmt': 'MANAGEMENT SYSTEM',
     'table-mgmt': 'MANAGEMENT SYSTEM',
     'billing': 'BILLING',
+    'invoice-history': 'INVOICE HISTORY',
 };
 
 // Map pages → parent pages (for back button)
@@ -182,6 +183,7 @@ const pageParent = {
     'order-mgmt': 'restaurant',
     'table-mgmt': 'restaurant',
     'billing': 'restaurant',
+    'invoice-history': 'home',
 };
 
 // Map pages → active sidebar item
@@ -192,6 +194,7 @@ const sidebarActive = {
     'order-mgmt': 'restaurant',
     'table-mgmt': 'restaurant',
     'action-items': 'action-items',
+    'invoice-history': 'invoice-history',
 };
 
 function navigate(page) {
@@ -234,6 +237,7 @@ function showPage(page) {
     if (page === 'action-items') loadActionItems();
     if (page === 'billing') loadBillingPage();
     if (page === 'order-mgmt') loadOrders();
+    if (page === 'invoice-history') loadInvoiceHistory();
 }
 
 // Back button
@@ -1486,6 +1490,170 @@ document.getElementById('btn-generate-invoice')?.addEventListener('click', () =>
         toast('Use the BILL button on a room card to add rooms to the invoice', 'info');
     }
     navigate('billing');
+});
+
+// ═══════════════════════════════════════════
+//  INVOICE HISTORY MODULE
+// ═══════════════════════════════════════════
+let invData = { content: [], totalPages: 0, totalElements: 0, number: 0 };
+let invSearchTerm = '';
+let invDateFilter = 'ALL';
+
+function getInvDateRange(filter) {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let from, to;
+    switch (filter) {
+        case 'TODAY':
+            from = start;
+            to = new Date(start.getTime() + 86400000);
+            break;
+        case 'WEEK': {
+            const dayOfWeek = start.getDay();
+            const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            from = new Date(start.getTime() + mondayOffset * 86400000);
+            to = new Date(from.getTime() + 7 * 86400000);
+            break;
+        }
+        case 'MONTH':
+            from = new Date(now.getFullYear(), now.getMonth(), 1);
+            to = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+            break;
+        case 'CUSTOM': {
+            const fromVal = document.getElementById('inv-date-from')?.value;
+            const toVal = document.getElementById('inv-date-to')?.value;
+            if (fromVal) from = new Date(fromVal + 'T00:00:00');
+            if (toVal) to = new Date(toVal + 'T23:59:59');
+            break;
+        }
+        default: return {};
+    }
+    return { dateFrom: from ? from.toISOString() : null, dateTo: to ? to.toISOString() : null };
+}
+
+async function loadInvoiceHistory(page = 0) {
+    const params = new URLSearchParams();
+    params.set('page', page);
+    params.set('size', '15');
+    const { dateFrom, dateTo } = getInvDateRange(invDateFilter);
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
+    try {
+        invData = await api(`${API.bills}?${params.toString()}`);
+        renderInvoiceHistory();
+    } catch (e) { /* toast shown */ }
+}
+
+function renderInvoiceHistory() {
+    const tbody = document.getElementById('inv-tbody');
+    const pagination = document.getElementById('inv-pagination');
+    if (!tbody || !pagination) return;
+
+    let items = invData.content || [];
+    if (invSearchTerm) {
+        const term = invSearchTerm.toLowerCase();
+        items = items.filter(inv =>
+            (inv.orderReference && inv.orderReference.toLowerCase().includes(term)) ||
+            (inv.serverName && inv.serverName.toLowerCase().includes(term)) ||
+            (inv.aiDescription && inv.aiDescription.toLowerCase().includes(term)) ||
+            (inv.id && inv.id.toString().includes(term))
+        );
+    }
+
+    if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted)">No invoices found.</td></tr>';
+        pagination.innerHTML = '';
+        return;
+    }
+
+    tbody.innerHTML = items.map(inv => {
+        const ref = inv.orderReference || 'INV-' + String(inv.id).padStart(4, '0');
+        const itemsSummary = inv.aiDescription
+            ? inv.aiDescription.substring(0, 50) + (inv.aiDescription.length > 50 ? '…' : '')
+            : '—';
+        return `<tr>
+            <td class="inv-cell-ref">${ref}</td>
+            <td class="inv-cell-date">${fmtDate(inv.createdAt)}</td>
+            <td class="inv-cell-server">${inv.serverName || '—'}</td>
+            <td class="inv-cell-items" title="${(inv.aiDescription || '').replace(/"/g,'&quot;')}">${itemsSummary}</td>
+            <td class="inv-cell-num">${fmt(inv.subtotal)}</td>
+            <td class="inv-cell-num">${fmt(inv.taxAmount)}</td>
+            <td class="inv-cell-num">${inv.discount > 0 ? '-' + fmt(inv.discount) : '—'}</td>
+            <td class="inv-cell-num inv-cell-total">${fmt(inv.totalDue)}</td>
+            <td class="inv-cell-action"><button class="btn btn-sm btn-outline" onclick="viewInvoiceDetail(${inv.id})">VIEW</button></td>
+        </tr>`;
+    }).join('');
+
+    renderInvPagination(pagination);
+}
+
+function renderInvPagination(container) {
+    const total = invData.totalPages || 0;
+    const current = invData.number || 0;
+    if (total <= 1) { container.innerHTML = ''; return; }
+    let html = `<button class="btn btn-sm btn-outline" onclick="loadInvoiceHistory(${current - 1})" ${current === 0 ? 'disabled' : ''}>← PREV</button>`;
+    const start = Math.max(0, current - 2);
+    const end = Math.min(total, current + 3);
+    for (let i = start; i < end; i++) {
+        html += `<button class="btn btn-sm ${i === current ? 'btn-primary' : 'btn-outline'}" onclick="loadInvoiceHistory(${i})">${i + 1}</button>`;
+    }
+    html += `<button class="btn btn-sm btn-outline" onclick="loadInvoiceHistory(${current + 1})" ${current >= total - 1 ? 'disabled' : ''}>NEXT →</button>`;
+    container.innerHTML = html;
+}
+
+window.viewInvoiceDetail = async function(id) {
+    try {
+        const inv = await api(`${API.bills}/${id}`);
+        const body = document.getElementById('inv-detail-body');
+        if (!body) return;
+        const items = (inv.lineItems && inv.lineItems.length)
+            ? inv.lineItems.map(item =>
+                `<tr><td>${item.quantity}</td><td>${item.description}</td><td>${fmtCurrency(item.unitPrice)}</td><td>${fmtCurrency(item.price)}</td></tr>`
+              ).join('')
+            : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No line items</td></tr>';
+        const ref = inv.orderReference || 'INV-' + String(inv.id).padStart(4, '0');
+        body.innerHTML = `
+            <div class="billing-receipt" style="max-width:500px;margin:0 auto">
+                <div class="receipt-header">
+                    <div>
+                        <div class="receipt-table-name">INVOICE</div>
+                        <div>${inv.serverName ? 'Server: ' + inv.serverName : ''}</div>
+                    </div>
+                    <div>
+                        <div>${ref}</div>
+                        <div class="receipt-date">${fmtDate(inv.createdAt)}</div>
+                    </div>
+                </div>
+                <table class="receipt-items">
+                    <thead><tr><th>QTY</th><th>ITEM</th><th>PRICE</th><th>TOTAL</th></tr></thead>
+                    <tbody>${items}</tbody>
+                </table>
+                <div class="receipt-totals">
+                    <div class="receipt-total-row"><span>SUBTOTAL</span><span>${fmtCurrency(inv.subtotal)}</span></div>
+                    <div class="receipt-total-row"><span>TAX (${(inv.taxRate * 100).toFixed(2)}%)</span><span>${fmtCurrency(inv.taxAmount)}</span></div>
+                    <div class="receipt-total-row"><span>DISCOUNT</span><span>${fmtCurrency(inv.discount)}</span></div>
+                    <div class="receipt-total-row total-due"><span>TOTAL DUE</span><span>${fmtCurrency(inv.totalDue)}</span></div>
+                </div>
+                ${inv.aiDescription ? '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-light);font-size:var(--fs-xs);color:var(--text-muted);font-style:italic">' + inv.aiDescription + '</div>' : ''}
+            </div>`;
+        openModal('inv-detail-modal');
+    } catch (e) { /* toast shown */ }
+};
+
+// Invoice date filter change
+document.getElementById('inv-date-filter')?.addEventListener('change', function() {
+    const customRange = document.getElementById('inv-custom-date-range');
+    if (customRange) customRange.style.display = this.value === 'CUSTOM' ? 'flex' : 'none';
+    invDateFilter = this.value;
+    loadInvoiceHistory(0);
+});
+
+document.getElementById('inv-date-from')?.addEventListener('change', () => loadInvoiceHistory(0));
+document.getElementById('inv-date-to')?.addEventListener('change', () => loadInvoiceHistory(0));
+
+document.getElementById('inv-search')?.addEventListener('input', function() {
+    invSearchTerm = this.value.toLowerCase().trim();
+    renderInvoiceHistory();
 });
 
 // ═══════════════════════════════════════════
