@@ -6,7 +6,7 @@
    ═══════════════════════════════════════════ */
 
 const API = { rooms: '/api/v1/rooms', menu: '/api/v1/menu', auth: '/api/v1/auth', actionItems: '/api/v1/action-items', bills: '/api/v1/bills', orders: '/api/v1/orders',     tables: '/api/v1/tables',
-    inventory: '/api/v1/inventory'
+    inventory: '/api/v1/inventory', assistant: '/api/v1/assistant/query'
 };
 
 // ── Helpers ───────────────────────────────
@@ -159,7 +159,7 @@ const navHistory = [];
 let currentPage = 'home';
 
 // Pages that show the sidebar
-const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'action-items', 'invoice-history', 'inventory']);
+const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'action-items', 'invoice-history', 'inventory', 'assistant']);
 
 // Map pages → topbar titles
 const pageTitles = {
@@ -174,6 +174,7 @@ const pageTitles = {
     'billing': 'BILLING',
     'invoice-history': 'INVOICE HISTORY',
     'inventory': 'INVENTORY',
+    'assistant': 'ASSISTANT',
 };
 
 // Map pages → parent pages (for back button)
@@ -188,6 +189,7 @@ const pageParent = {
     'billing': 'restaurant',
     'invoice-history': 'home',
     'inventory': 'home',
+    'assistant': 'home',
 };
 
 // Map pages → active sidebar item
@@ -200,6 +202,7 @@ const sidebarActive = {
     'action-items': 'action-items',
     'invoice-history': 'invoice-history',
     'inventory': 'inventory',
+    'assistant': 'assistant',
 };
 
 function navigate(page) {
@@ -244,6 +247,7 @@ function showPage(page) {
     if (page === 'order-mgmt') loadOrders();
     if (page === 'invoice-history') loadInvoiceHistory();
     if (page === 'inventory') loadInventory();
+    if (page === 'assistant') initAssistant();
 }
 
 // Back button
@@ -1845,6 +1849,55 @@ document.getElementById('inventory-search')?.addEventListener('input', function(
     inventorySearchTerm = this.value.toLowerCase().trim();
     renderInventoryGrid();
 });
+
+// ═══════════════════════════════════════════
+//  ASSISTANT CHAT MODULE
+// ═══════════════════════════════════════════
+let assistantInitialized = false;
+
+function initAssistant() {
+    if (assistantInitialized) return;
+    assistantInitialized = true;
+
+    const input = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('btn-chat-send');
+    const messages = document.getElementById('chat-messages');
+
+    function addMessage(text, role) {
+        const div = document.createElement('div');
+        div.className = 'chat-msg chat-msg-' + role;
+        div.innerHTML = role === 'assistant'
+            ? '<div class="chat-msg-avatar">A</div><div class="chat-msg-bubble"><p style="margin:0;white-space:pre-wrap">' + escapeHtml(text) + '</p></div>'
+            : '<div class="chat-msg-bubble user"><p style="margin:0;white-space:pre-wrap">' + escapeHtml(text) + '</p></div><div class="chat-msg-avatar user">U</div>';
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function escapeHtml(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    async function sendQuery() {
+        const q = input.value.trim();
+        if (!q || q.length > 500) return;
+        addMessage(q, 'user');
+        input.value = '';
+        sendBtn.disabled = true;
+        sendBtn.textContent = '...';
+        try {
+            const res = await api(API.assistant, { method: 'POST', body: JSON.stringify({ query: q }) });
+            addMessage(res.responseText, 'assistant');
+        } catch (e) {
+            addMessage('Sorry, something went wrong. Please try again.', 'assistant');
+        } finally {
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'SEND';
+        }
+    }
+
+    sendBtn?.addEventListener('click', sendQuery);
+    input?.addEventListener('keydown', function(e) { if (e.key === 'Enter') sendQuery(); });
+}
 
 // ═══════════════════════════════════════════
 //  INIT — navigation init is handled in the
