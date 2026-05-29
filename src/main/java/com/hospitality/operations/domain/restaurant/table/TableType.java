@@ -1,5 +1,7 @@
 package com.hospitality.operations.domain.restaurant.table;
 
-public class TableType {
-
+public enum TableType {
+    DINING,
+    BAR,
+    PATIO
 }

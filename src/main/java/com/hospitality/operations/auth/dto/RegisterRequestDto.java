@@ -13,7 +13,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class LoginRequestDto {
+public class RegisterRequestDto {
 
     @NotBlank(message = "Username is required")
     @Size(max = 100, message = "Username must not exceed 100 characters")
@@ -22,4 +22,7 @@ public class LoginRequestDto {
     @NotBlank(message = "Password is required")
     @Size(min = 4, max = 255, message = "Password must be between 4 and 255 characters")
     private String password;
+
+    @Size(max = 100, message = "Tenant schema must not exceed 100 characters")
+    private String tenantSchema;
 }

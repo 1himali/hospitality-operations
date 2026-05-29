@@ -1,5 +1,7 @@
 package com.hospitality.operations.domain.restaurant.table;
 
-public class TableStatus {
-
+public enum TableStatus {
+    AVAILABLE,
+    OCCUPIED,
+    RESERVED
 }

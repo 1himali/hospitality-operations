@@ -1,277 +1,412 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Hospitality Operations Management System - Room and Menu Management Dashboard">
-    <title>Hospitality Operations</title>
+    <meta name="description" content="Hospitality Operations Management System">
+    <title>Management System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/index.css">
 </head>
 <body>
-    <div class="app-layout">
-        <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-brand">
-                <div class="brand-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                        <polyline points="9 22 9 12 15 12 15 22"/>
-                    </svg>
+    <!-- ══════════════════════════════════════
+         TOP BAR (always visible)
+         ══════════════════════════════════════ -->
+    <header class="topbar" id="topbar" style="display:none;">
+        <button class="topbar-back" id="btn-back" title="Go back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+        </button>
+        <h1 class="topbar-title" id="topbar-title">MANAGEMENT SYSTEM</h1>
+        <div class="topbar-actions">
+            <button class="topbar-btn" id="btn-theme" title="Toggle theme">
+                <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            </button>
+            <button class="topbar-btn" id="btn-logout" title="Logout" style="background:#c0392b;color:#ffffff;border-radius:4px;">LOGOUT</button>
+        </div>
+    </header>
+
+    <!-- ══════════════════════════════════════
+         LOGIN PAGE
+         ══════════════════════════════════════ -->
+    <div id="login-page" style="display:flex; align-items:center; justify-content:center; height:100vh; background:var(--bg-app);">
+        <div style="background:var(--bg-surface); padding:48px 32px; border-radius:8px; width:100%; max-width:400px; box-shadow:var(--shadow-lg);">
+            <h1 style="text-align:center; font-size:var(--fs-2xl); font-weight:900; letter-spacing:0.06em; margin-bottom:32px; text-transform:uppercase;">LOGIN</h1>
+            <form id="login-form">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="display:block; font-size:var(--fs-sm); font-weight:600; margin-bottom:8px; text-transform:uppercase;">USERNAME</label>
+                    <input type="text" id="login-username" placeholder="user" style="width:100%; padding:10px 12px; border:2px dashed var(--border-dashed); border-radius:4px; font-size:var(--fs-base); font-family:var(--font); background:var(--bg-input); color:var(--text-primary);" required>
                 </div>
-                <span class="brand-text">HospOps</span>
+                <div class="form-group" style="margin-bottom:24px;">
+                    <label style="display:block; font-size:var(--fs-sm); font-weight:600; margin-bottom:8px; text-transform:uppercase;">PASSWORD</label>
+                    <input type="password" id="login-password" placeholder="••••" style="width:100%; padding:10px 12px; border:2px dashed var(--border-dashed); border-radius:4px; font-size:var(--fs-base); font-family:var(--font); background:var(--bg-input); color:var(--text-primary);" required>
+                </div>
+                <button type="submit" style="width:100%; padding:12px; background:var(--accent); color:var(--text-inverse); border:none; border-radius:4px; font-size:var(--fs-base); font-weight:600; text-transform:uppercase; cursor:pointer; transition:all var(--transition);">SIGN IN</button>
+            </form>
+            <div id="login-error" style="margin-top:16px; padding:12px; background:#fee; border:2px dashed #c0392b; border-radius:4px; color:#c0392b; font-size:var(--fs-sm); display:none; text-align:center;"></div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         APP BODY (sidebar + content)
+         ══════════════════════════════════════ -->
+    <div class="app-body" style="display:none;">
+
+        <!-- Sidebar (shown contextually) -->
+        <aside class="sidebar hidden" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-logo">⌂</div>
+                <div>
+                    <div class="sidebar-title">OPERATIONS</div>
+                    <div class="sidebar-version">V1.0.4</div>
+                </div>
             </div>
-            <nav class="sidebar-nav">
-                <button class="nav-item active" data-page="rooms" id="nav-rooms">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M2 20v-8l10-6 10 6v8"/>
-                        <path d="M4 20V11"/>
-                        <path d="M20 20V11"/>
-                        <rect x="6" y="14" width="4" height="6"/>
-                        <rect x="14" y="14" width="4" height="6"/>
-                    </svg>
-                    <span>Rooms</span>
+            <nav class="sidebar-nav" id="sidebar-nav">
+                <button class="sidebar-item" data-target="rooms-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 0 0-8 0v2"/></svg>
+                    RESERVATIONS
                 </button>
-                <button class="nav-item" data-page="menu" id="nav-menu">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
-                        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-                        <line x1="6" y1="1" x2="6" y2="4"/>
-                        <line x1="10" y1="1" x2="10" y2="4"/>
-                        <line x1="14" y1="1" x2="14" y2="4"/>
-                    </svg>
-                    <span>Menu</span>
+                <button class="sidebar-item" data-target="restaurant">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                    RESTAURANT
+                </button>
+                <button class="sidebar-item" data-target="action-items">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    TASKS
+                </button>
+                <button class="sidebar-item" data-target="home">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>
+                    INVENTORY
+                </button>
+                <button class="sidebar-item" data-target="home">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    REPORTS
                 </button>
             </nav>
-            <div class="sidebar-footer">
-                <div class="sidebar-footer-info">
-                    <span class="sidebar-footer-dot"></span>
-                    <span>System Online</span>
-                </div>
-            </div>
         </aside>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Top Bar -->
-            <header class="topbar">
-                <div class="topbar-left">
-                    <button class="sidebar-toggle" id="sidebar-toggle">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="3" y1="6" x2="21" y2="6"/>
-                            <line x1="3" y1="12" x2="21" y2="12"/>
-                            <line x1="3" y1="18" x2="21" y2="18"/>
-                        </svg>
+        <!-- Main Content Area -->
+        <main class="content" id="content">
+
+            <!-- ═══ PAGE: HOME ═══ -->
+            <section class="page active" id="page-home">
+                <div class="hub-grid">
+                    <button class="hub-card" data-navigate="lodging">
+                        <div class="hub-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M2 20v-8l10-6 10 6v8"/><path d="M4 20V11"/><path d="M20 20V11"/><rect x="8" y="14" width="3" height="6"/><rect x="13" y="14" width="3" height="6"/></svg>
+                        </div>
+                        <span class="hub-card-label">LODGING</span>
                     </button>
-                    <h1 class="page-title" id="page-title">Room Management</h1>
+                    <button class="hub-card" data-navigate="restaurant">
+                        <div class="hub-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                        </div>
+                        <span class="hub-card-label">RESTAURANT</span>
+                    </button>
                 </div>
-                <div class="topbar-right">
-                    <div class="topbar-clock" id="topbar-clock"></div>
+            </section>
+
+            <!-- ═══ PAGE: LODGING HUB ═══ -->
+            <section class="page" id="page-lodging">
+                <h2 class="page-heading">LODGING</h2>
+                <div class="hub-grid">
+                    <button class="hub-card" data-navigate="action-items">
+                        <div class="hub-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                        </div>
+                        <span class="hub-card-label">ACTION ITEMS</span>
+                    </button>
+                    <button class="hub-card" data-navigate="rooms-search">
+                        <div class="hub-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        </div>
+                        <span class="hub-card-label">ROOMS SEARCH</span>
+                    </button>
                 </div>
-            </header>
+            </section>
 
-            <!-- Pages -->
-            <div class="page-container">
-                <!-- Rooms Page -->
-                <section class="page active" id="page-rooms">
-                    <!-- Stats Row -->
-                    <div class="stats-row" id="room-stats"></div>
-
-                    <!-- Toolbar -->
-                    <div class="toolbar">
-                        <div class="toolbar-left">
-                            <div class="filter-group">
-                                <label class="filter-label">Status</label>
-                                <select class="filter-select" id="room-status-filter">
-                                    <option value="">All Statuses</option>
-                                    <option value="VACANT">Vacant</option>
-                                    <option value="OCCUPIED">Occupied</option>
-                                    <option value="RESERVED">Reserved</option>
-                                    <option value="MAINTAINED">Maintained</option>
-                                    <option value="UNDER_MAINTENANCE">Under Maintenance</option>
-                                    <option value="MAINT">Maint</option>
-                                </select>
+            <!-- ═══ PAGE: ROOMS SEARCH ═══ -->
+            <section class="page" id="page-rooms-search">
+                <div class="page-with-filters">
+                    <div class="filter-panel" id="room-filter-panel">
+                        <h3 class="filter-heading">FILTERS</h3>
+                        <div class="filter-checks" id="room-filter-checks">
+                            <label class="filter-check"><input type="checkbox" value="VACANT" checked><span class="checkmark"></span>VACANT</label>
+                            <label class="filter-check"><input type="checkbox" value="OCCUPIED"><span class="checkmark"></span>OCCUPIED</label>
+                            <label class="filter-check"><input type="checkbox" value="MAINTAINED"><span class="checkmark"></span>MAINTAINED</label>
+                            <label class="filter-check"><input type="checkbox" value="UNDER_MAINTENANCE"><span class="checkmark"></span>UNDER MAINTENANCE</label>
+                            <label class="filter-check"><input type="checkbox" value="RESERVED"><span class="checkmark"></span>RESERVED</label>
+                            <label class="filter-check"><input type="checkbox" value="MAINT"><span class="checkmark"></span>MAINT</label>
+                        </div>
+                        <hr class="filter-divider">
+                        <button class="btn btn-outline btn-block" id="btn-clear-room-filters">CLEAR FILTERS</button>
+                    </div>
+                    <div class="page-main">
+                        <div class="page-toolbar">
+                            <h2 class="page-heading" style="margin:0">ROOM SEARCH</h2>
+                            <div class="page-toolbar-actions">
+                                <button class="btn btn-outline" id="btn-generate-invoice">GENERATE INVOICE</button>
+                                <button class="btn btn-primary" id="btn-add-room">+ ADD ROOM</button>
                             </div>
                         </div>
-                        <div class="toolbar-right">
-                            <button class="btn btn-primary" id="btn-add-room">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                Add Room
-                            </button>
+                        <div class="card-grid" id="room-grid">
+                            <div class="loading-state">Loading rooms...</div>
                         </div>
                     </div>
+                </div>
+            </section>
 
-                    <!-- Room Grid -->
-                    <div class="card-grid" id="room-grid">
-                        <div class="loading-state">Loading rooms...</div>
+            <!-- ═══ PAGE: ACTION ITEMS ═══ -->
+            <section class="page" id="page-action-items">
+                <div class="page-with-filters">
+                    <div class="filter-panel" id="action-filter-panel">
+                        <h3 class="filter-heading">FILTERS</h3>
+                        <div class="filter-list" id="action-category-filters">
+                            <button class="filter-list-item active">ALL</button>
+                        </div>
                     </div>
-                </section>
-
-                <!-- Menu Page -->
-                <section class="page" id="page-menu">
-                    <!-- Stats Row -->
-                    <div class="stats-row" id="menu-stats"></div>
-
-                    <!-- Toolbar -->
-                    <div class="toolbar">
-                        <div class="toolbar-left">
-                            <div class="filter-group">
-                                <label class="filter-label">Category</label>
-                                <select class="filter-select" id="menu-category-filter">
-                                    <option value="">All Categories</option>
-                                    <option value="STARTERS">Starters</option>
-                                    <option value="MAINS">Mains</option>
-                                    <option value="SIDES">Sides</option>
-                                    <option value="DESSERTS">Desserts</option>
-                                    <option value="BEVERAGES">Beverages</option>
-                                </select>
+                    <div class="page-main">
+                        <div class="page-toolbar">
+                            <h2 class="page-heading" style="margin:0">ACTION ITEMS</h2>
+                            <div class="page-toolbar-actions">
+                                <div class="toggle-group" id="action-todo-toggle">
+                                    <button class="toggle-btn active" data-value="TODO">TO DO</button>
+                                    <button class="toggle-btn" data-value="COMPLETED">COMPLETED</button>
+                                </div>
                             </div>
                         </div>
-                        <div class="toolbar-right">
-                            <button class="btn btn-primary" id="btn-add-menu-item">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                Add Item
-                            </button>
+                        <div class="card-grid" id="action-grid">
+                            <div class="empty-state"><div class="empty-state-icon">📋</div><p>Action Items will appear here once the backend is implemented.</p></div>
                         </div>
                     </div>
+                </div>
+            </section>
 
-                    <!-- Menu Grid -->
-                    <div class="card-grid" id="menu-grid">
-                        <div class="loading-state">Loading menu items...</div>
+            <!-- ═══ PAGE: RESTAURANT HUB ═══ -->
+            <section class="page" id="page-restaurant">
+                <h2 class="page-heading">RESTAURANT</h2>
+                <div class="hub-grid hub-grid-2x2">
+                    <button class="hub-card" data-navigate="menu-mgmt">
+                        <div class="hub-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                        </div>
+                        <span class="hub-card-label">MENU MANAGEMENT</span>
+                    </button>
+                    <button class="hub-card" data-navigate="order-mgmt">
+                        <div class="hub-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        </div>
+                        <span class="hub-card-label">ORDER MANAGEMENT</span>
+                    </button>
+                    <button class="hub-card" data-navigate="table-mgmt">
+                        <div class="hub-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                        </div>
+                        <span class="hub-card-label">TABLE MANAGEMENT</span>
+                    </button>
+                    <button class="hub-card" data-navigate="billing">
+                        <div class="hub-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                        </div>
+                        <span class="hub-card-label">BILLING</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ═══ PAGE: MENU MANAGEMENT ═══ -->
+            <section class="page" id="page-menu-mgmt">
+                <div class="page-with-filters">
+                    <div class="filter-panel">
+                        <h3 class="filter-heading">CATEGORIES</h3>
+                        <div class="filter-list" id="menu-category-filters">
+                            <button class="filter-list-item active" data-value="">ALL ITEMS</button>
+                            <button class="filter-list-item" data-value="STARTERS">STARTERS</button>
+                            <button class="filter-list-item" data-value="MAINS">MAINS</button>
+                            <button class="filter-list-item" data-value="SIDES">SIDES</button>
+                            <button class="filter-list-item" data-value="DESSERTS">DESSERTS</button>
+                            <button class="filter-list-item" data-value="BEVERAGES">BEVERAGES</button>
+                        </div>
                     </div>
-                </section>
-            </div>
+                    <div class="page-main">
+                        <div class="page-toolbar">
+                            <h2 class="page-heading" style="margin:0">MENU MANAGEMENT</h2>
+                            <div class="page-toolbar-actions">
+                                <button class="btn btn-primary" id="btn-add-menu-item">ADD ITEM</button>
+                            </div>
+                        </div>
+                        <div class="card-grid" id="menu-grid">
+                            <div class="loading-state">Loading menu...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ PAGE: ORDER MANAGEMENT ═══ -->
+            <section class="page" id="page-order-mgmt">
+                <div class="page-with-filters">
+                    <div class="filter-panel">
+                        <h3 class="filter-heading">FILTERS</h3>
+                        <div class="filter-list" id="order-status-filters">
+                            <button class="filter-list-item active" data-value="ACTIVE">ACTIVE ✓</button>
+                            <button class="filter-list-item" data-value="CANCELLED">CANCELLED</button>
+                            <button class="filter-list-item" data-value="COMPLETED">COMPLETED</button>
+                        </div>
+                        <hr class="filter-divider">
+                        <h4 class="filter-subheading">DATE RANGE</h4>
+                        <select class="filter-select" id="order-date-filter">
+                            <option value="TODAY">TODAY</option>
+                            <option value="WEEK">THIS WEEK</option>
+                            <option value="MONTH">THIS MONTH</option>
+                        </select>
+                    </div>
+                    <div class="page-main">
+                        <div class="page-toolbar">
+                            <h2 class="page-heading" style="margin:0">ORDER MANAGEMENT</h2>
+                            <div class="page-toolbar-actions">
+                                <button class="btn btn-outline" id="btn-create-order">+ CREATE ORDER</button>
+                            </div>
+                        </div>
+                        <div class="card-grid" id="order-grid">
+                            <div class="empty-state"><div class="empty-state-icon">📝</div><p>Orders will appear here once the backend is implemented.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ PAGE: TABLE MANAGEMENT ═══ -->
+            <section class="page" id="page-table-mgmt">
+                <h2 class="page-heading">TABLE MANAGEMENT</h2>
+                <div class="table-toolbar">
+                    <div class="tab-bar" id="table-tab-bar">
+                        <button class="tab-btn active" data-value="">ALL TABLES</button>
+                        <button class="tab-btn" data-value="AVAILABLE">AVAILABLE</button>
+                        <button class="tab-btn" data-value="OCCUPIED">OCCUPIED</button>
+                        <button class="tab-btn" data-value="RESERVED">RESERVED</button>
+                    </div>
+                    <div class="search-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" placeholder="SEARCH TABLE..." id="table-search">
+                    </div>
+                </div>
+                <div class="table-card-grid" id="table-grid">
+                    <div class="empty-state"><div class="empty-state-icon">🪑</div><p>Tables will appear here once the backend is implemented.</p></div>
+                </div>
+            </section>
+
+            <!-- ═══ PAGE: BILLING ═══ -->
+            <section class="page" id="page-billing">
+                <div class="billing-receipt" id="billing-receipt">
+                    <div class="empty-state"><div class="empty-state-icon">🧾</div><p>Billing view will be available once the backend is implemented.<br>Select an order to generate a bill.</p></div>
+                </div>
+            </section>
+
         </main>
     </div>
 
-    <!-- Room Modal -->
+    <!-- ══════════════════════════════════════
+         MODAL: Room Form
+         ══════════════════════════════════════ -->
     <div class="modal-overlay" id="room-modal">
         <div class="modal">
             <div class="modal-header">
-                <h2 class="modal-title" id="room-modal-title">Add Room</h2>
-                <button class="modal-close" id="room-modal-close">&times;</button>
+                <h2 class="modal-title" id="room-modal-title">ADD ROOM</h2>
+                <button class="modal-close" onclick="closeModal('room-modal')">&times;</button>
             </div>
             <form id="room-form" class="modal-form">
                 <input type="hidden" id="room-edit-id">
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="room-number">Room Number *</label>
-                        <input type="text" id="room-number" maxlength="10" required placeholder="e.g. 101">
-                    </div>
-                    <div class="form-group">
-                        <label for="room-type">Type *</label>
+                    <div class="form-group"><label>ROOM NUMBER *</label><input type="text" id="room-number" maxlength="10" required placeholder="101"></div>
+                    <div class="form-group"><label>TYPE *</label>
                         <select id="room-type" required>
-                            <option value="DELUXE_KING">Deluxe King</option>
-                            <option value="STD_DOUBLE">Standard Double</option>
-                            <option value="SUITE">Suite</option>
+                            <option value="DELUXE_KING">DELUXE KING</option>
+                            <option value="STD_DOUBLE">STD DOUBLE</option>
+                            <option value="SUITE">SUITE</option>
                         </select>
                     </div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="room-floor">Floor *</label>
-                        <input type="number" id="room-floor" min="0" required placeholder="e.g. 1">
-                    </div>
-                    <div class="form-group">
-                        <label for="room-rate">Rate / Night (₹) *</label>
-                        <input type="number" id="room-rate" min="0.01" step="0.01" required placeholder="e.g. 4500.00">
-                    </div>
+                    <div class="form-group"><label>FLOOR *</label><input type="number" id="room-floor" min="0" required placeholder="01"></div>
+                    <div class="form-group"><label>RATE / NIGHT *</label><input type="number" id="room-rate" min="0.01" step="0.01" required placeholder="250"></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="room-status-input">Status</label>
+                    <div class="form-group"><label>STATUS</label>
                         <select id="room-status-input">
-                            <option value="VACANT">Vacant</option>
-                            <option value="OCCUPIED">Occupied</option>
-                            <option value="RESERVED">Reserved</option>
-                            <option value="MAINTAINED">Maintained</option>
-                            <option value="UNDER_MAINTENANCE">Under Maintenance</option>
-                            <option value="MAINT">Maint</option>
+                            <option value="VACANT">VACANT</option>
+                            <option value="OCCUPIED">OCCUPIED</option>
+                            <option value="RESERVED">RESERVED</option>
+                            <option value="MAINTAINED">MAINTAINED</option>
+                            <option value="UNDER_MAINTENANCE">UNDER MAINTENANCE</option>
+                            <option value="MAINT">MAINT</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="room-image-url">Image URL</label>
-                        <input type="url" id="room-image-url" placeholder="https://...">
-                    </div>
+                    <div class="form-group"><label>IMAGE URL</label><input type="url" id="room-image-url" placeholder="https://..."></div>
                 </div>
-                <div class="form-group">
-                    <label for="room-issue-notes">Issue Notes</label>
-                    <textarea id="room-issue-notes" rows="2" maxlength="500" placeholder="Any maintenance notes..."></textarea>
-                </div>
+                <div class="form-group"><label>ISSUE NOTES</label><textarea id="room-issue-notes" rows="2" maxlength="500" placeholder="Plumbing, electrical..."></textarea></div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn-ghost" id="room-modal-cancel">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="room-submit-btn">Save Room</button>
+                    <button type="button" class="btn btn-outline" onclick="closeModal('room-modal')">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" id="room-submit-btn">SAVE</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Menu Modal -->
+    <!-- ══════════════════════════════════════
+         MODAL: Menu Item Form
+         ══════════════════════════════════════ -->
     <div class="modal-overlay" id="menu-modal">
         <div class="modal">
             <div class="modal-header">
-                <h2 class="modal-title" id="menu-modal-title">Add Menu Item</h2>
-                <button class="modal-close" id="menu-modal-close">&times;</button>
+                <h2 class="modal-title" id="menu-modal-title">ADD ITEM</h2>
+                <button class="modal-close" onclick="closeModal('menu-modal')">&times;</button>
             </div>
             <form id="menu-form" class="modal-form">
                 <input type="hidden" id="menu-edit-id">
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="menu-name">Name *</label>
-                        <input type="text" id="menu-name" maxlength="150" required placeholder="e.g. Paneer Tikka">
-                    </div>
-                    <div class="form-group">
-                        <label for="menu-category">Category *</label>
+                    <div class="form-group"><label>NAME *</label><input type="text" id="menu-name" maxlength="150" required placeholder="Paneer Tikka"></div>
+                    <div class="form-group"><label>CATEGORY *</label>
                         <select id="menu-category" required>
-                            <option value="STARTERS">Starters</option>
-                            <option value="MAINS">Mains</option>
-                            <option value="SIDES">Sides</option>
-                            <option value="DESSERTS">Desserts</option>
-                            <option value="BEVERAGES">Beverages</option>
+                            <option value="STARTERS">STARTERS</option>
+                            <option value="MAINS">MAINS</option>
+                            <option value="SIDES">SIDES</option>
+                            <option value="DESSERTS">DESSERTS</option>
+                            <option value="BEVERAGES">BEVERAGES</option>
                         </select>
                     </div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="menu-price">Price (₹) *</label>
-                        <input type="number" id="menu-price" min="0.01" step="0.01" required placeholder="e.g. 350.00">
-                    </div>
-                    <div class="form-group form-group-toggle">
-                        <label for="menu-available">Available</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="menu-available" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
+                    <div class="form-group"><label>PRICE *</label><input type="number" id="menu-price" min="0.01" step="0.01" required placeholder="350.00"></div>
+                    <div class="form-group form-group-inline"><label>AVAILABLE</label>
+                        <label class="toggle"><input type="checkbox" id="menu-available" checked><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn-ghost" id="menu-modal-cancel">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="menu-submit-btn">Save Item</button>
+                    <button type="button" class="btn btn-outline" onclick="closeModal('menu-modal')">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" id="menu-submit-btn">SAVE</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
+    <!-- ══════════════════════════════════════
+         MODAL: Delete Confirmation
+         ══════════════════════════════════════ -->
     <div class="modal-overlay" id="delete-modal">
         <div class="modal modal-sm">
             <div class="modal-header">
-                <h2 class="modal-title">Confirm Delete</h2>
-                <button class="modal-close" id="delete-modal-close">&times;</button>
+                <h2 class="modal-title">CONFIRM DELETE</h2>
+                <button class="modal-close" onclick="closeModal('delete-modal')">&times;</button>
             </div>
-            <div class="modal-body">
-                <p id="delete-modal-message">Are you sure you want to delete this item?</p>
-            </div>
+            <div class="modal-body"><p id="delete-msg">Are you sure?</p></div>
             <div class="form-actions">
-                <button class="btn btn-ghost" id="delete-modal-cancel">Cancel</button>
-                <button class="btn btn-danger" id="delete-modal-confirm">Delete</button>
+                <button class="btn btn-outline" onclick="closeModal('delete-modal')">CANCEL</button>
+                <button class="btn btn-danger" id="btn-confirm-delete">DELETE</button>
             </div>
         </div>
     </div>
 
-    <!-- Toast Container -->
+    <!-- Toast container -->
     <div class="toast-container" id="toast-container"></div>
 
     <script src="/js/app.js"></script>
