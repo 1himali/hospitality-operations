@@ -54,7 +54,11 @@ Three-role system implemented:
 - **ApiUsageLogService** — Added `exportCsv()` and `exportJson()` methods
 
 ### Frontend changes
-- **Sidebar** — "USER MGMT" visible to Admin/Owner, "PAYROLL" visible to Owner only (hidden for others)
+- **Sidebar** — "USER MGMT", "API METRICS", "MOCK MODE", "ANALYTICS" visible to Admin/Owner; "PAYROLL" visible to Owner only (all hidden for User role)
+- **`updateSidebarVisibility()`** — Extended to show/hide API METRICS, MOCK MODE, ANALYTICS sidebar items via `isAdminOrOwner()`
+- **Page-level guards** — `loadApiMetrics()`, `loadAnalytics()`, `loadMockModePage()` now block non-admin/owner users with "Access denied" message (replacing page content); matches pattern already used by `loadUserMgmt()` and `loadPayroll()`
+- **API Metrics export buttons** — Effectively hidden from User role because the page-level guard replaces the entire page content before User reaches them
+- **Mock Mode controls** — Effectively hidden from User role via the same page-level guard mechanism
 - **User Management page** — list users, add user, reset password, delete user
 - **Payroll page** — Employee cards with search bar (name), status filter, department filter. Click employee card to highlight. "RECORDS" button opens payroll history panel with bonus/deductions/net_pay breakdown. Add/edit/delete employees with joining date and status. CSV export download.
 - **API Metrics page** — added Export CSV/JSON buttons that download via browser flow

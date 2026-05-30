@@ -320,14 +320,19 @@ function isOwner() {
 }
 
 function updateSidebarVisibility() {
-    const userMgmtBtn = document.getElementById('sidebar-user-mgmt');
-    const payrollBtn = document.getElementById('sidebar-payroll');
-    if (userMgmtBtn) {
-        userMgmtBtn.style.display = isAdminOrOwner() ? '' : 'none';
-    }
-    if (payrollBtn) {
-        payrollBtn.style.display = isOwner() ? '' : 'none';
-    }
+    const adminOwner = isAdminOrOwner();
+    const ownerOnly = isOwner();
+    const items = [
+        { id: 'sidebar-user-mgmt', show: adminOwner },
+        { id: 'sidebar-payroll', show: ownerOnly },
+        { id: 'sidebar-api-metrics', show: adminOwner },
+        { id: 'sidebar-mock-mode', show: adminOwner },
+        { id: 'sidebar-analytics', show: adminOwner },
+    ];
+    items.forEach(({ id, show }) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = show ? '' : 'none';
+    });
 }
 
 function navigate(page) {
@@ -2365,6 +2370,10 @@ async function generateInvoiceFromCart() {
 // ═══════════════════════════════════════════
 
 async function loadApiMetrics() {
+    if (!isAdminOrOwner()) {
+        document.querySelector('#page-api-metrics .page-main').innerHTML = '<div class="empty-state"><p>Access denied. Admin or Owner role required.</p></div>';
+        return;
+    }
     try {
         const [summary, endpoints] = await Promise.all([
             api(API.metrics + '/summary'),
@@ -2425,6 +2434,10 @@ document.getElementById('btn-export-metrics-json')?.addEventListener('click', ()
 // ═══════════════════════════════════════════
 
 async function loadAnalytics() {
+    if (!isAdminOrOwner()) {
+        document.querySelector('#page-analytics .page-main').innerHTML = '<div class="empty-state"><p>Access denied. Admin or Owner role required.</p></div>';
+        return;
+    }
     try {
         const data = await api(API.analytics);
         if (!data) return;
@@ -2877,6 +2890,10 @@ function isAdminOrOwner() {
 }
 
 async function loadMockModePage() {
+    if (!isAdminOrOwner()) {
+        document.querySelector('#page-mock-mode .page-main').innerHTML = '<div class="empty-state"><p>Access denied. Admin or Owner role required.</p></div>';
+        return;
+    }
     const controls = document.getElementById('mock-mode-controls');
     if (controls) {
         controls.style.display = isAdminOrOwner() ? '' : 'none';
