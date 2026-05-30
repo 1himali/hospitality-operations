@@ -1409,3 +1409,99 @@ input, select, textarea { font-family: var(--font); }
     .content { padding: 20px; }
     .sidebar { position: fixed; left: 0; top: var(--topbar-h); bottom: 0; z-index: 50; box-shadow: var(--shadow-lg); }
 }
+
+/* ═══════════════════════════════════════
+   PAYROLL STYLES
+   ═══════════════════════════════════════ */
+
+.payroll-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.payroll-records-panel {
+    flex: 0 0 420px;
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    position: sticky;
+    top: 16px;
+}
+
+.payroll-records-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.payroll-records-header h3 {
+    font-size: var(--fs-sm);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.payroll-record-row {
+    padding: 12px;
+    background: var(--bg-app);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+}
+
+.payroll-record-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.payroll-record-date {
+    font-weight: 700;
+    font-size: var(--fs-sm);
+}
+
+.payroll-record-details {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: var(--fs-xs);
+    color: var(--text-secondary);
+}
+
+.payroll-record-notes {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    margin-top: 6px;
+    padding: 6px;
+    background: var(--bg-surface);
+    border-radius: 4px;
+    font-style: italic;
+}
+
+.payroll-record-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    justify-content: flex-end;
+}
+
+@media (max-width: 1024px) {
+    .payroll-layout {
+        flex-direction: column;
+    }
+    .payroll-records-panel {
+        flex: none;
+        width: 100%;
+        max-height: none;
+        position: static;
+    }
+}

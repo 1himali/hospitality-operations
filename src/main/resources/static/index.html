@@ -759,16 +759,50 @@
 
             <!-- ═══ PAGE: PAYROLL ═══ -->
             <section class="page" id="page-payroll">
-                <div class="page-main" style="max-width:900px;margin:0 auto;width:100%">
-                    <div class="page-toolbar">
-                        <h2 class="page-heading" style="margin:0">PAYROLL MANAGER</h2>
-                        <div class="page-toolbar-actions">
-                            <button class="btn btn-primary" id="btn-add-employee">+ ADD EMPLOYEE</button>
-                            <button class="btn btn-outline" id="btn-export-payroll">EXPORT CSV</button>
+                <div class="page-with-filters">
+                    <div class="filter-panel" id="payroll-filter-panel">
+                        <h3 class="filter-heading">FILTERS</h3>
+                        <div class="filter-list" id="payroll-status-filters">
+                            <button class="filter-list-item active" data-value="">ALL STATUS</button>
+                            <button class="filter-list-item" data-value="ACTIVE">ACTIVE</button>
+                            <button class="filter-list-item" data-value="INACTIVE">INACTIVE</button>
+                            <button class="filter-list-item" data-value="TERMINATED">TERMINATED</button>
                         </div>
+                        <hr class="filter-divider">
+                        <div class="filter-list" id="payroll-dept-filters">
+                            <button class="filter-list-item active" data-value="">ALL DEPT</button>
+                            <button class="filter-list-item" data-value="KITCHEN">KITCHEN</button>
+                            <button class="filter-list-item" data-value="SERVICE">SERVICE</button>
+                            <button class="filter-list-item" data-value="HOUSEKEEPING">HOUSEKEEPING</button>
+                            <button class="filter-list-item" data-value="MANAGEMENT">MANAGEMENT</button>
+                            <button class="filter-list-item" data-value="MAINTENANCE">MAINTENANCE</button>
+                            <button class="filter-list-item" data-value="OTHER">OTHER</button>
+                        </div>
+                        <input type="text" id="payroll-search" class="filter-search" placeholder="SEARCH EMPLOYEES...">
                     </div>
-                    <div class="card-grid" id="payroll-grid">
-                        <div class="loading-state">Loading employees...</div>
+                    <div class="page-main">
+                        <div class="page-toolbar" id="payroll-toolbar">
+                            <h2 class="page-heading" style="margin:0">PAYROLL MANAGER</h2>
+                            <div class="page-toolbar-actions">
+                                <button class="btn btn-primary" id="btn-add-employee">+ ADD EMPLOYEE</button>
+                                <button class="btn btn-outline" id="btn-export-payroll">EXPORT CSV</button>
+                            </div>
+                        </div>
+                        <div class="payroll-layout">
+                            <div class="card-grid" id="payroll-grid" style="flex:1">
+                                <div class="loading-state">Loading employees...</div>
+                            </div>
+                            <div class="payroll-records-panel" id="payroll-records-panel" style="display:none">
+                                <div class="payroll-records-header">
+                                    <h3 id="payroll-records-title">PAYROLL RECORDS</h3>
+                                    <div style="display:flex;gap:8px">
+                                        <button class="btn btn-sm btn-primary" id="btn-add-record">+ ADD RECORD</button>
+                                        <button class="btn btn-sm btn-outline" id="btn-close-records">&times;</button>
+                                    </div>
+                                </div>
+                                <div id="payroll-records-list"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -1143,9 +1177,54 @@
                     <div class="form-group"><label>PHONE</label><input type="text" id="emp-phone" maxlength="20" placeholder="+91 9876543210"></div>
                     <div class="form-group"><label>EMAIL</label><input type="email" id="emp-email" maxlength="200" placeholder="john@example.com"></div>
                 </div>
+                <div class="form-row">
+                    <div class="form-group"><label>JOINING DATE</label><input type="date" id="emp-hire-date"></div>
+                    <div class="form-group"><label>STATUS</label>
+                        <select id="emp-status">
+                            <option value="ACTIVE">ACTIVE</option>
+                            <option value="INACTIVE">INACTIVE</option>
+                            <option value="TERMINATED">TERMINATED</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-outline" onclick="closeModal('employee-modal')">CANCEL</button>
                     <button type="submit" class="btn btn-primary" id="employee-submit-btn">SAVE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         MODAL: Payroll Record Form
+         ══════════════════════════════════════ -->
+    <div class="modal-overlay" id="record-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="record-modal-title">ADD PAYROLL RECORD</h2>
+                <button class="modal-close" onclick="closeModal('record-modal')">&times;</button>
+            </div>
+            <form id="record-form" class="modal-form">
+                <input type="hidden" id="record-edit-id">
+                <input type="hidden" id="record-employee-id">
+                <div class="form-row">
+                    <div class="form-group"><label>BONUS</label><input type="number" id="rec-bonus" min="0" step="0.01" value="0" placeholder="0"></div>
+                    <div class="form-group"><label>DEDUCTIONS</label><input type="number" id="rec-deductions" min="0" step="0.01" value="0" placeholder="0"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>PAYMENT DATE *</label><input type="date" id="rec-payment-date" required></div>
+                    <div class="form-group"><label>STATUS</label>
+                        <select id="rec-status">
+                            <option value="PAID">PAID</option>
+                            <option value="PENDING">PENDING</option>
+                            <option value="CANCELLED">CANCELLED</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group"><label>NOTES</label><textarea id="rec-notes" rows="3" maxlength="500" placeholder="Optional notes about this payment"></textarea></div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('record-modal')">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" id="record-submit-btn">SAVE</button>
                 </div>
             </form>
         </div>

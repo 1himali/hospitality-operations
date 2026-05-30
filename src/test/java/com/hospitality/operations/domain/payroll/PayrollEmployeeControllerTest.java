@@ -50,7 +50,7 @@ class PayrollEmployeeControllerTest {
                         .department("KITCHEN").salary(new BigDecimal("50000")).build()
         ));
 
-        mockMvc.perform(get("/api/v1/admin/payroll")
+        mockMvc.perform(get("/api/v1/admin/payroll/employees")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("John"))
@@ -58,9 +58,23 @@ class PayrollEmployeeControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "OWNER")
+    void testSearchByName() throws Exception {
+        when(payrollEmployeeService.search("John", null, null)).thenReturn(List.of(
+                PayrollEmployee.builder().id(1L).name("John").position("Chef")
+                        .department("KITCHEN").salary(new BigDecimal("50000")).build()
+        ));
+
+        mockMvc.perform(get("/api/v1/admin/payroll/employees?name=John")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("John"));
+    }
+
+    @Test
     @WithMockUser(roles = "ADMIN")
     void testGetAllAsAdminForbidden() throws Exception {
-        mockMvc.perform(get("/api/v1/admin/payroll")
+        mockMvc.perform(get("/api/v1/admin/payroll/employees")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden());
     }
@@ -68,7 +82,7 @@ class PayrollEmployeeControllerTest {
     @Test
     @WithMockUser(roles = "USER")
     void testGetAllAsUserForbidden() throws Exception {
-        mockMvc.perform(get("/api/v1/admin/payroll")
+        mockMvc.perform(get("/api/v1/admin/payroll/employees")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden());
     }
@@ -81,7 +95,7 @@ class PayrollEmployeeControllerTest {
                         .department("MANAGEMENT").salary(new BigDecimal("80000")).build()
         );
 
-        mockMvc.perform(get("/api/v1/admin/payroll/1")
+        mockMvc.perform(get("/api/v1/admin/payroll/employees/1")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Jane"));
@@ -95,7 +109,7 @@ class PayrollEmployeeControllerTest {
                         .department("SERVICE").salary(new BigDecimal("30000")).build()
         );
 
-        mockMvc.perform(post("/api/v1/admin/payroll")
+        mockMvc.perform(post("/api/v1/admin/payroll/employees")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"New\",\"position\":\"Staff\",\"department\":\"SERVICE\",\"salary\":30000}")
                         .accept(MediaType.APPLICATION_JSON))
@@ -105,8 +119,24 @@ class PayrollEmployeeControllerTest {
 
     @Test
     @WithMockUser(roles = "OWNER")
+    void testUpdate() throws Exception {
+        when(payrollEmployeeService.update(any(), any())).thenReturn(
+                PayrollEmployee.builder().id(1L).name("Updated").position("Head Chef")
+                        .department("KITCHEN").salary(new BigDecimal("60000")).build()
+        );
+
+        mockMvc.perform(put("/api/v1/admin/payroll/employees/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Updated\",\"position\":\"Head Chef\",\"department\":\"KITCHEN\",\"salary\":60000}")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Updated"));
+    }
+
+    @Test
+    @WithMockUser(roles = "OWNER")
     void testDelete() throws Exception {
-        mockMvc.perform(delete("/api/v1/admin/payroll/1")
+        mockMvc.perform(delete("/api/v1/admin/payroll/employees/1")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
     }
@@ -116,7 +146,7 @@ class PayrollEmployeeControllerTest {
     void testExportCsv() throws Exception {
         when(payrollEmployeeService.exportCsv()).thenReturn("ID,Name\n1,John\n");
 
-        mockMvc.perform(get("/api/v1/admin/payroll/export/csv")
+        mockMvc.perform(get("/api/v1/admin/payroll/employees/export/csv")
                         .accept(MediaType.TEXT_PLAIN))
                 .andExpect(status().isOk());
     }

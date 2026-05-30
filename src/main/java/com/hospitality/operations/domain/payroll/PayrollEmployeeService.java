@@ -21,6 +21,22 @@ public class PayrollEmployeeService {
     }
 
     @Transactional(readOnly = true)
+    public List<PayrollEmployee> search(String name, String status, String department) {
+        List<PayrollEmployee> all = repository.findAll();
+        if (name != null && !name.isBlank()) {
+            String term = name.toLowerCase();
+            all = all.stream().filter(e -> e.getName().toLowerCase().contains(term)).toList();
+        }
+        if (status != null && !status.isBlank()) {
+            all = all.stream().filter(e -> status.equals(e.getStatus())).toList();
+        }
+        if (department != null && !department.isBlank()) {
+            all = all.stream().filter(e -> department.equals(e.getDepartment())).toList();
+        }
+        return all;
+    }
+
+    @Transactional(readOnly = true)
     public PayrollEmployee findById(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("PayrollEmployee", "id", id));

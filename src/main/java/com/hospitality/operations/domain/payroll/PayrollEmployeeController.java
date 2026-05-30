@@ -1,5 +1,6 @@
 package com.hospitality.operations.domain.payroll;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.springframework.http.HttpHeaders;
@@ -12,19 +13,26 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/v1/admin/payroll")
+@RequestMapping("/api/v1/admin/payroll/employees")
 @RequiredArgsConstructor
 public class PayrollEmployeeController {
 
     private final PayrollEmployeeService payrollEmployeeService;
 
     @GetMapping
-    public ResponseEntity<List<PayrollEmployee>> getAll() {
+    public ResponseEntity<List<PayrollEmployee>> getAll(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String department) {
+        if (name != null || status != null || department != null) {
+            return ResponseEntity.ok(payrollEmployeeService.search(name, status, department));
+        }
         return ResponseEntity.ok(payrollEmployeeService.findAll());
     }
 
@@ -52,7 +60,7 @@ public class PayrollEmployeeController {
     @GetMapping("/export/csv")
     public ResponseEntity<byte[]> exportCsv() {
         String csv = payrollEmployeeService.exportCsv();
-        byte[] bytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("text/csv"));
         headers.setContentDispositionFormData("attachment", "payroll_employees.csv");

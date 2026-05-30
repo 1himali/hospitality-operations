@@ -40,13 +40,15 @@ Three-role system implemented:
 |------|-------------|--------|
 | **User** | `user` / `user` | Basic app workflows (rooms, menu, orders, tables, billing, inventory, action items, assistant, calculator, invoice history) |
 | **Admin** | `admin` / `abcd` | User + Invoice Management, User CRUD, password resets, Analytics, API Metrics (incl. CSV/JSON export), Mock Mode toggle, Assistant enable/disable. **Restricted from Payroll.** |
-| **Owner** | `owner` / `4321` | Full access including Payroll Manager CRUD, Payroll CSV export, System Configuration |
+| **Owner** | `owner` / `4321` | Full access including Payroll Manager CRUD, Payroll CSV export, Payroll Records (bonus/deductions/history), System Configuration |
 
 ### Backend changes
 - **SecurityConfig** — Complete role-based endpoint rules: `ROLE_OWNER` for payroll, `ROLE_ADMIN`+`ROLE_OWNER` for user mgmt, metrics, mock mode, analytics, assistant admin; `ROLE_USER`+ for all other API
 - **DataInitializer** — Updated `admin` password to `abcd`, added `owner`/`4321` seed
 - **V12 migration** — `payroll_employees` table
-- **PayrollEmployee** entity, repository, service, controller (`/api/v1/admin/payroll/**`) — Owner-only CRUD + CSV export
+- **V13 migration** — `payroll_records` table (employee_id FK, base_salary, bonus, deductions, net_pay, payment_date, notes, status)
+- **PayrollEmployee** entity, repository, service, controller (`/api/v1/admin/payroll/employees/**`) — Owner-only CRUD, CSV export, search/filter by name/status/department
+- **PayrollRecord** entity, repository, service, controller (`/api/v1/admin/payroll/records/**`) — Owner-only CRUD with auto-calculated net_pay
 - **UserManagementController** (`/api/v1/admin/users/**`) — Admin/Owner: list, create, password reset
 - **ApiMetricsController** — Added `/export/csv` and `/export/json` endpoints (Admin/Owner)
 - **ApiUsageLogService** — Added `exportCsv()` and `exportJson()` methods
@@ -54,10 +56,11 @@ Three-role system implemented:
 ### Frontend changes
 - **Sidebar** — "USER MGMT" visible to Admin/Owner, "PAYROLL" visible to Owner only (hidden for others)
 - **User Management page** — list users, add user, reset password, delete user
-- **Payroll page** — list employees (Owner only), add/edit/delete, CSV export download
+- **Payroll page** — Employee cards with search bar (name), status filter, department filter. Click employee card to highlight. "RECORDS" button opens payroll history panel with bonus/deductions/net_pay breakdown. Add/edit/delete employees with joining date and status. CSV export download.
 - **API Metrics page** — added Export CSV/JSON buttons that download via browser flow
-- **`isOwner()`** and **`updateSidebarVisibility()`** functions
-- **CSS** — no new styles needed (reuses existing `room-card` patterns)
+- **Payroll Record modal** — bonus, deductions, payment date, status, notes with auto-calculated net pay
+- **`isOwner()`** and **`updateSidebarVisibility()`** functions  
+- **CSS** — `.payroll-layout` two-column layout, `.payroll-records-panel` sticky records panel, `.payroll-record-row` card with date/status/details/notes/actions
 
 ## Product requirements
 

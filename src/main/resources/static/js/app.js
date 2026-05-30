@@ -7,7 +7,7 @@
 
 const API = { rooms: '/api/v1/rooms', menu: '/api/v1/menu', auth: '/api/v1/auth', actionItems: '/api/v1/action-items', bills: '/api/v1/bills', orders: '/api/v1/orders',     tables: '/api/v1/tables',
     inventory: '/api/v1/inventory', assistant: '/api/v1/assistant/query', metrics: '/api/v1/metrics', mockMode: '/api/v1/admin/mock-mode', analytics: '/api/v1/admin/analytics',
-    userMgmt: '/api/v1/admin/users', payroll: '/api/v1/admin/payroll'
+    userMgmt: '/api/v1/admin/users', payroll: '/api/v1/admin/payroll/employees', payrollRecords: '/api/v1/admin/payroll/records'
 };
 
 // ── Helpers ───────────────────────────────
@@ -845,7 +845,12 @@ $('#btn-confirm-delete').addEventListener('click', async () => {
         } else if (type === 'payroll') {
             await api(`${API.payroll}/${id}`, { method: 'DELETE' });
             toast('Employee deleted');
+            closePayrollRecords();
             loadPayroll();
+        } else if (type === 'payrollRecord') {
+            await api(`${API.payrollRecords}/${id}`, { method: 'DELETE' });
+            toast('Payroll record deleted');
+            closePayrollRecords();
         }
     } catch (e) { /* toast shown */ }
     closeModal('delete-modal');
@@ -2575,6 +2580,10 @@ document.getElementById('reset-pw-form')?.addEventListener('submit', async funct
 // ═══════════════════════════════════════════
 
 let employeesData = [];
+let payrollStatusFilter = '';
+let payrollDeptFilter = '';
+let payrollSearchTerm = '';
+let selectedEmployeeId = null;
 
 async function loadPayroll() {
     if (!isOwner()) {
@@ -2582,7 +2591,13 @@ async function loadPayroll() {
         return;
     }
     try {
-        employeesData = await api(API.payroll);
+        const params = new URLSearchParams();
+        if (payrollStatusFilter) params.set('status', payrollStatusFilter);
+        if (payrollDeptFilter) params.set('department', payrollDeptFilter);
+        if (payrollSearchTerm) params.set('name', payrollSearchTerm);
+        const qs = params.toString();
+        const url = qs ? `${API.payroll}?${qs}` : API.payroll;
+        employeesData = await api(url);
         renderPayroll();
     } catch (e) { /* toast shown */ }
 }
@@ -2595,25 +2610,33 @@ function renderPayroll() {
         return;
     }
     grid.innerHTML = employeesData.map(emp => `
-        <div class="room-card">
+        <div class="room-card ${selectedEmployeeId === emp.id ? 'selected' : ''}" style="cursor:pointer" onclick="selectPayrollEmployee(${emp.id})">
             <div class="room-card-header">
                 <span class="room-card-id">${emp.name}</span>
                 <span class="badge ${emp.status === 'ACTIVE' ? 'badge-filled' : 'badge-outlined'}">${emp.status}</span>
             </div>
             <div class="room-card-body">
                 <div class="room-card-row"><span class="room-card-label">POSITION:</span><span class="room-card-value">${emp.position}</span></div>
-                <div class="room-card-row"><span class="room-card-label">DEPARTMENT:</span><span class="room-card-value">${emp.department}</span></div>
+                <div class="room-card-row"><span class="room-card-label">DEPT:</span><span class="room-card-value">${emp.department}</span></div>
                 <div class="room-card-row"><span class="room-card-label">SALARY:</span><span class="room-card-value">${fmt(emp.salary)}</span></div>
+                <div class="room-card-row"><span class="room-card-label">JOINED:</span><span class="room-card-value">${emp.hireDate ? fmtDate(emp.hireDate) : '—'}</span></div>
                 ${emp.phone ? `<div class="room-card-row"><span class="room-card-label">PHONE:</span><span class="room-card-value">${emp.phone}</span></div>` : ''}
-                ${emp.email ? `<div class="room-card-row"><span class="room-card-label">EMAIL:</span><span class="room-card-value">${emp.email}</span></div>` : ''}
             </div>
             <div class="room-card-actions" style="margin-top:12px;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
-                <button class="btn btn-outline btn-sm" onclick="editEmployee(${emp.id})">EDIT</button>
-                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="confirmDeleteEmployee(${emp.id},'${emp.name.replace(/'/g,"\\'")}')">DELETE</button>
+                <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();viewPayrollRecords(${emp.id},'${emp.name.replace(/'/g,"\\'")}')">RECORDS</button>
+                <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editEmployee(${emp.id})">EDIT</button>
+                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();confirmDeleteEmployee(${emp.id},'${emp.name.replace(/'/g,"\\'")}')">DELETE</button>
             </div>
         </div>
     `).join('');
 }
+
+function selectPayrollEmployee(id) {
+    selectedEmployeeId = id;
+    renderPayroll();
+}
+
+// ── Employee CRUD ──
 
 window.editEmployee = async function(id) {
     const emp = employeesData.find(e => e.id === id);
@@ -2627,6 +2650,8 @@ window.editEmployee = async function(id) {
     document.getElementById('emp-salary').value = emp.salary;
     document.getElementById('emp-phone').value = emp.phone || '';
     document.getElementById('emp-email').value = emp.email || '';
+    document.getElementById('emp-hire-date').value = emp.hireDate ? emp.hireDate.substring(0, 10) : '';
+    document.getElementById('emp-status').value = emp.status || 'ACTIVE';
     openModal('employee-modal');
 };
 
@@ -2643,6 +2668,8 @@ document.getElementById('btn-add-employee')?.addEventListener('click', function(
     document.getElementById('employee-form').reset();
     document.getElementById('employee-edit-id').value = '';
     document.getElementById('emp-salary').value = '30000';
+    document.getElementById('emp-status').value = 'ACTIVE';
+    document.getElementById('emp-hire-date').value = new Date().toISOString().substring(0, 10);
     openModal('employee-modal');
 });
 
@@ -2650,14 +2677,19 @@ document.getElementById('btn-add-employee')?.addEventListener('click', function(
 document.getElementById('employee-form')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     const editId = document.getElementById('employee-edit-id').value;
+    const hireDateVal = document.getElementById('emp-hire-date').value;
     const body = {
         name: document.getElementById('emp-name').value.trim(),
         position: document.getElementById('emp-position').value.trim(),
         department: document.getElementById('emp-department').value,
         salary: parseFloat(document.getElementById('emp-salary').value),
+        status: document.getElementById('emp-status').value,
         phone: document.getElementById('emp-phone').value.trim() || null,
         email: document.getElementById('emp-email').value.trim() || null,
     };
+    if (hireDateVal) {
+        body.hireDate = new Date(hireDateVal + 'T00:00:00Z').toISOString();
+    }
     try {
         if (editId) {
             await api(`${API.payroll}/${editId}`, { method: 'PUT', body: JSON.stringify(body) });
@@ -2689,6 +2721,151 @@ document.getElementById('btn-export-payroll')?.addEventListener('click', async f
         URL.revokeObjectURL(url);
         toast('Payroll exported');
     } catch (e) { toast('Export failed', 'error'); }
+});
+
+// ── Payroll Records ──
+
+async function viewPayrollRecords(employeeId, employeeName) {
+    selectedEmployeeId = employeeId;
+    renderPayroll();
+    const panel = document.getElementById('payroll-records-panel');
+    const title = document.getElementById('payroll-records-title');
+    const list = document.getElementById('payroll-records-list');
+    if (!panel || !title || !list) return;
+    title.textContent = 'PAYROLL RECORDS — ' + employeeName;
+    list.innerHTML = '<div class="loading-state">Loading records...</div>';
+    document.getElementById('record-employee-id').value = employeeId;
+    panel.style.display = 'block';
+    try {
+        const records = await api(`${API.payrollRecords}/employee/${employeeId}`);
+        if (!records || !records.length) {
+            list.innerHTML = '<div class="empty-state" style="padding:20px"><p>No payroll records yet.</p></div>';
+        } else {
+            list.innerHTML = records.map(r => `
+                <div class="payroll-record-row">
+                    <div class="payroll-record-main">
+                        <span class="payroll-record-date">${fmtDate(r.paymentDate)}</span>
+                        <span class="badge ${r.status === 'PAID' ? 'badge-filled' : 'badge-outlined'}">${r.status}</span>
+                    </div>
+                    <div class="payroll-record-details">
+                        <span>Base: ${fmt(r.baseSalary)}</span>
+                        <span>Bonus: ${fmt(r.bonus)}</span>
+                        <span>Deduct: ${fmt(r.deductions)}</span>
+                        <span style="font-weight:800">Net: ${fmt(r.netPay)}</span>
+                    </div>
+                    ${r.notes ? `<div class="payroll-record-notes">${r.notes}</div>` : ''}
+                    <div class="payroll-record-actions">
+                        <button class="btn btn-outline btn-sm" onclick="editPayrollRecord(${r.id})">EDIT</button>
+                        <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="confirmDeletePayrollRecord(${r.id})">DELETE</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (e) {
+        list.innerHTML = '<div class="empty-state"><p>Failed to load records.</p></div>';
+    }
+}
+
+function closePayrollRecords() {
+    const panel = document.getElementById('payroll-records-panel');
+    if (panel) panel.style.display = 'none';
+    if (selectedEmployeeId) {
+        loadPayroll();
+    }
+}
+
+document.getElementById('btn-close-records')?.addEventListener('click', closePayrollRecords);
+
+// Add record button
+document.getElementById('btn-add-record')?.addEventListener('click', function() {
+    const empId = document.getElementById('record-employee-id').value;
+    if (!empId) { toast('Select an employee first', 'error'); return; }
+    document.getElementById('record-modal-title').textContent = 'ADD PAYROLL RECORD';
+    document.getElementById('record-submit-btn').textContent = 'SAVE';
+    document.getElementById('record-form').reset();
+    document.getElementById('record-edit-id').value = '';
+    document.getElementById('record-employee-id').value = empId;
+    document.getElementById('rec-bonus').value = '0';
+    document.getElementById('rec-deductions').value = '0';
+    document.getElementById('rec-payment-date').value = new Date().toISOString().substring(0, 10);
+    document.getElementById('rec-status').value = 'PAID';
+    openModal('record-modal');
+});
+
+window.editPayrollRecord = async function(id) {
+    try {
+        const rec = await api(`${API.payrollRecords}/${id}`);
+        document.getElementById('record-modal-title').textContent = 'EDIT PAYROLL RECORD';
+        document.getElementById('record-submit-btn').textContent = 'UPDATE';
+        document.getElementById('record-edit-id').value = id;
+        document.getElementById('record-employee-id').value = rec.employeeId;
+        document.getElementById('rec-bonus').value = rec.bonus;
+        document.getElementById('rec-deductions').value = rec.deductions;
+        document.getElementById('rec-payment-date').value = rec.paymentDate ? rec.paymentDate.substring(0, 10) : '';
+        document.getElementById('rec-status').value = rec.status;
+        document.getElementById('rec-notes').value = rec.notes || '';
+        openModal('record-modal');
+    } catch (e) { /* toast shown */ }
+};
+
+window.confirmDeletePayrollRecord = function(id) {
+    pendingDelete = { type: 'payrollRecord', id };
+    document.getElementById('delete-msg').textContent = 'Delete this payroll record?';
+    openModal('delete-modal');
+};
+
+// Record form submit
+document.getElementById('record-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const editId = document.getElementById('record-edit-id').value;
+    const empId = document.getElementById('record-employee-id').value;
+    const paymentDate = document.getElementById('rec-payment-date').value;
+    if (!paymentDate) { toast('Payment date is required', 'error'); return; }
+    const body = {
+        employeeId: parseInt(empId),
+        bonus: parseFloat(document.getElementById('rec-bonus').value) || 0,
+        deductions: parseFloat(document.getElementById('rec-deductions').value) || 0,
+        paymentDate: new Date(paymentDate + 'T00:00:00Z').toISOString(),
+        notes: document.getElementById('rec-notes').value.trim() || null,
+        status: document.getElementById('rec-status').value,
+    };
+    try {
+        if (editId) {
+            await api(`${API.payrollRecords}/${editId}`, { method: 'PUT', body: JSON.stringify(body) });
+            toast('Record updated');
+        } else {
+            await api(API.payrollRecords, { method: 'POST', body: JSON.stringify(body) });
+            toast('Record created');
+        }
+        closeModal('record-modal');
+        const emp = employeesData.find(e => e.id === parseInt(empId));
+        if (emp) viewPayrollRecords(parseInt(empId), emp.name);
+    } catch (e) { /* toast shown */ }
+});
+
+// ── Payroll Filters ──
+
+document.getElementById('payroll-search')?.addEventListener('input', function() {
+    payrollSearchTerm = this.value.toLowerCase().trim();
+    loadPayroll();
+});
+
+document.querySelectorAll('#payroll-status-filters .filter-list-item').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('#payroll-status-filters .filter-list-item').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        payrollStatusFilter = this.dataset.value || '';
+        loadPayroll();
+    });
+});
+
+document.querySelectorAll('#payroll-dept-filters .filter-list-item').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('#payroll-dept-filters .filter-list-item').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        payrollDeptFilter = this.dataset.value || '';
+        loadPayroll();
+    });
 });
 
 // ═══════════════════════════════════════════
