@@ -140,3 +140,90 @@ Three-role system implemented:
 * State what you plan to change.
 * State what was changed.
 * State any risks or follow-ups.
+
+## Sidebar Icon Inventory
+
+| # | Label | SVG Paths (abbreviated) | Visual Meaning |
+|---|-------|------------------------|----------------|
+| 1 | RESERVATIONS | `<rect x="2" y="7" w="20" h="14"/>` + `<path d="M16 7V5a4 4 0 0 0-8 0v2"/>` | Building/hotel with door and roof |
+| 2 | RESTAURANT | Cup path + 3 steam lines | Coffee cup with steam |
+| 3 | TASKS | Document path + polyline + 2 lines | Clipboard with checklines |
+| 4 | INVENTORY | Box rect + lid line | Crate/box |
+| 5 | INVOICE HISTORY | Three descending bar lines | Bar chart (invoice/report) |
+| 6 | CALCULATOR | Rect + 9 grid lines | Calculator with button grid |
+| 7 | ASSISTANT | Circle face + 2 dot eyes | Face (AI chat) |
+| 8 | API METRICS | Three vertical bar paths | Stats bars (metrics) |
+| 9 | MOCK MODE | Box + plus cross lines | Toggle/simulation |
+| 10 | ANALYTICS | Polyline ascending | Trend/line chart |
+| 11 | USER MGMT | Two people paths | Users |
+| 12 | PAYROLL | Wallet + coin paths | Payroll/money |
+
+**Note:** All icons are 18×18px SVG, stroke-width="2", inside `.sidebar-item` with 10px gap. No icon movement applied.
+
+## Branding & UI Redesign
+
+### Brand Names (suggested)
+1. **Cafe Hana** (하나 — "one/unity" in Korean) — warm, simple, works as software brand
+2. **Mochi** — soft, cute, internationally recognized
+3. **Dalgona** (달고나) — Korean honeycomb toffee, trendy, distinctly Seoul
+4. **Seoul & Co.** — professional but playful, city-inspired
+
+### Fonts (Google Fonts)
+| Role | Font | Usage |
+|------|------|-------|
+| Primary (body) | Noto Sans | All body text, inputs, buttons, tables |
+| Heading | Jua | Page titles, topbar title, section headers, login brand |
+| Secondary | Gaegu | Decorative/accent text (login subtitle) |
+
+### Color Palette (Seoul Cafe Warm)
+| Token | Color | Description |
+|-------|-------|-------------|
+| `--bg-app` | `#FDF6F0` | Warm cream page background |
+| `--bg-surface` | `#FFFCF9` | Warm white cards/surfaces |
+| `--bg-surface-alt` | `#FFF0E6` | Seashell warm hover/alt |
+| `--border` | `#E8D5C4` | Warm beige borders |
+| `--border-light` | `#F0E6D8` | Lighter beige |
+| `--border-dashed` | `#D4BFAA` | Dashed border beige |
+| `--text-primary` | `#3D2C2C` | Warm dark brown text |
+| `--text-secondary` | `#7A6B5D` | Warm gray-brown |
+| `--text-muted` | `#A89888` | Muted warm gray |
+| `--text-inverse` | `#FFFCF9` | White on accent |
+| `--accent` | `#E8916E` | Coral/terracotta (cafe terrace) |
+| `--accent-hover` | `#D47A58` | Darker coral |
+| `--danger` | `#D46767` | Soft rose red |
+| `--success` | `#7FB07F` | Matcha/sage green |
+| `--warning` | `#E8B86E` | Warm amber |
+| `--radius` | `6px` / `10px` | Softer rounding |
+
+### Header Changes
+- **Home icon** added immediately after back button (house SVG, navigates to landing page via `btn-home` click handler)
+- **Title** changed to "HIMALI'S MANAGEMENT SYSTEM" rendered in Jua heading font
+- **Logout button** redesigned: pill shape, accent coral bg, shows `LOGOUT <span class="logout-username">username</span>`, updated via `updateLogoutButton()`
+- **Back/Home icons**: hover changes border+color to accent coral
+- `.topbar-title`: Jua font, larger size, centered, uppercase with lighter letter-spacing
+
+### Logout Button Behavior
+- Login handler stores username in `localStorage.setItem('username', username)`
+- `updateLogoutButton()` reads `localStorage.getItem('username')` and sets `btn.innerHTML = 'LOGOUT <span class="logout-username">' + uname + '</span>'`
+- Called on login, page refresh (DOMContentLoaded), and every `showPage()` navigation
+- Logout clears username from localStorage
+
+### Floating Assistant Widget
+- **Position**: `position: fixed; bottom: 80px; right: 24px; z-index: 850` — above billing FAB (at bottom:24px, z-index:900)
+- **Button**: 52px circle, accent coral, assistant face icon
+- **Popup**: 340×420px max, absolute above button (bottom:60px), `.assistant-popup` with header + scrollable messages + input bar
+- **Functionality**: click button toggles popup; uses same `API.assistant` endpoint; separate message list from page assistant
+- **Show/hide**: popup hidden initially; click button to open; close button or re-click to hide
+- **Responsive**: at 480px, popup narrows to 290px
+
+### Login Page
+- "CAFE HANA" in Jua heading, accent coral, uppercase
+- "himālī's management" subtitle in muted text (Gaegu secondary font)
+- "SIGN IN" button updated to use accent coral + rounded corners
+
+### What Did NOT Change
+- Wireframe structure (topbar height 52px, sidebar 200px, page layout, content area)
+- Sidebar icon SVGs (no movement, no replacement — inventory-only)
+- Navigation logic, back button, page hierarchy
+- Backend code, API endpoints, SecurityConfig
+- All 85 backend tests still pass

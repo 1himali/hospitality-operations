@@ -179,6 +179,7 @@ function showAppPage() {
         if (authToken) {
             showAppPage();
             showPage('home');
+            updateLogoutButton();
         } else {
             showLoginPage();
         }
@@ -216,6 +217,7 @@ document.getElementById('login-form')?.addEventListener('submit', async e => {
         isAuthenticated = true;
         localStorage.setItem('authToken', authToken);
         if (userRole) localStorage.setItem('userRole', userRole);
+        localStorage.setItem('username', username);
 
         toast('Login successful');
         const form = document.getElementById('login-form');
@@ -223,12 +225,26 @@ document.getElementById('login-form')?.addEventListener('submit', async e => {
         showAppPage();
         showPage('home');
         updateSidebarVisibility();
+        updateLogoutButton();
     } catch (err) {
         if (errorEl) {
             errorEl.textContent = err.message;
             errorEl.style.display = 'block';
         }
     }
+});
+
+function updateLogoutButton() {
+    const btn = document.getElementById('btn-logout');
+    if (!btn) return;
+    const uname = localStorage.getItem('username') || userRole || 'USER';
+    btn.innerHTML = 'LOGOUT <span class="logout-username">' + uname + '</span>';
+}
+
+// Home button — navigates to landing page
+document.getElementById('btn-home')?.addEventListener('click', () => {
+    navHistory.length = 0;
+    showPage('home');
 });
 
 // Logout button
@@ -238,6 +254,7 @@ document.getElementById('btn-logout')?.addEventListener('click', () => {
     isAuthenticated = false;
     localStorage.removeItem('authToken');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('username');
     const form = document.getElementById('login-form');
     if (form) form.reset();
     showLoginPage();
@@ -255,14 +272,14 @@ const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-
 
 // Map pages → topbar titles
 const pageTitles = {
-    'home': 'MANAGEMENT SYSTEM',
-    'lodging': 'MANAGEMENT SYSTEM',
-    'rooms-search': 'MANAGEMENT SYSTEM',
+    'home': 'CAFE HĀNA',
+    'lodging': 'CAFE HĀNA',
+    'rooms-search': 'CAFE HĀNA',
     'action-items': 'ACTION ITEMS',
-    'restaurant': 'MANAGEMENT SYSTEM',
-    'menu-mgmt': 'MANAGEMENT SYSTEM',
-    'order-mgmt': 'MANAGEMENT SYSTEM',
-    'table-mgmt': 'MANAGEMENT SYSTEM',
+    'restaurant': 'CAFE HĀNA',
+    'menu-mgmt': 'CAFE HĀNA',
+    'order-mgmt': 'CAFE HĀNA',
+    'table-mgmt': 'CAFE HĀNA',
     'billing': 'BILLING',
     'invoice-history': 'INVOICE HISTORY',
     'inventory': 'INVENTORY',
@@ -355,7 +372,10 @@ function showPage(page) {
     if (el) el.classList.add('active');
 
     // Topbar title
-    $('#topbar-title').textContent = pageTitles[page] || 'MANAGEMENT SYSTEM';
+    $('#topbar-title').innerHTML = (pageTitles[page] || 'CAFE HĀNA') + ' <small>by himāli</small>';
+
+    // Logout button username
+    updateLogoutButton();
 
     // Sidebar visibility
     const sidebar = $('#sidebar');
@@ -2095,6 +2115,61 @@ function initAssistant() {
     sendBtn?.addEventListener('click', sendQuery);
     input?.addEventListener('keydown', function(e) { if (e.key === 'Enter') sendQuery(); });
 }
+
+// ═══════════════════════════════════════════
+//  FLOATING ASSISTANT WIDGET
+//  ═══════════════════════════════════════════
+(function initFloatingAssistant() {
+    const widgetBtn = document.getElementById('assistant-widget-btn');
+    const popup = document.getElementById('assistant-popup');
+    const closeBtn = document.getElementById('assistant-popup-close');
+    const input = document.getElementById('assistant-widget-input');
+    const sendBtn = document.getElementById('assistant-widget-send');
+    const messages = document.getElementById('assistant-popup-messages');
+    const widget = document.getElementById('assistant-widget');
+    if (!widgetBtn || !popup || !widget) return;
+
+    function addMessage(text, role) {
+        const div = document.createElement('div');
+        div.className = 'chat-msg chat-msg-' + role;
+        div.innerHTML = role === 'assistant'
+            ? '<div class="chat-msg-avatar">A</div><div class="chat-msg-bubble"><p style="margin:0;white-space:pre-wrap">' + text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p></div>'
+            : '<div class="chat-msg-bubble user"><p style="margin:0;white-space:pre-wrap">' + text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p></div><div class="chat-msg-avatar user">U</div>';
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    async function sendQuery() {
+        const q = input.value.trim();
+        if (!q || q.length > 500) return;
+        addMessage(q, 'user');
+        input.value = '';
+        sendBtn.disabled = true;
+        sendBtn.textContent = '...';
+        try {
+            const res = await api(API.assistant, { method: 'POST', body: JSON.stringify({ query: q }) });
+            addMessage(res.responseText, 'assistant');
+        } catch (e) {
+            addMessage('Sorry, something went wrong. Please try again.', 'assistant');
+        } finally {
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'SEND';
+        }
+    }
+
+    widgetBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const isOpen = popup.style.display !== 'none';
+        popup.style.display = isOpen ? 'none' : 'flex';
+    });
+
+    closeBtn?.addEventListener('click', function() { popup.style.display = 'none'; });
+    sendBtn?.addEventListener('click', sendQuery);
+    input?.addEventListener('keydown', function(e) { if (e.key === 'Enter') sendQuery(); });
+
+    // Show widget after login
+    widget.style.display = '';
+})();
 
 // ═══════════════════════════════════════════
 //  CALCULATOR MODULE
