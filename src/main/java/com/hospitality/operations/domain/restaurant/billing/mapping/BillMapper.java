@@ -8,7 +8,6 @@ import com.hospitality.operations.domain.restaurant.billing.dto.BillResponseDto;
 public final class BillMapper {
 
     private BillMapper() {
-        // utility class
     }
 
     public static BillResponseDto toDto(Bill bill, List<BillResponseDto.LineItemDto> lineItems) {
@@ -18,6 +17,12 @@ public final class BillMapper {
                 .orderReference(bill.getOrderReference())
                 .tableId(bill.getTableId())
                 .serverName(bill.getServerName())
+                .customerName(bill.getCustomerName())
+                .phoneNumber(bill.getPhoneNumber())
+                .email(bill.getEmail())
+                .invoiceNumber(bill.getInvoiceNumber())
+                .status(bill.getStatus())
+                .notes(bill.getNotes())
                 .subtotal(bill.getSubtotal())
                 .taxRate(bill.getTaxRate())
                 .taxAmount(bill.getTaxAmount())

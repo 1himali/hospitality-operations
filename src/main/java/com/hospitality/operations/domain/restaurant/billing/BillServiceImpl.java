@@ -3,8 +3,12 @@ package com.hospitality.operations.domain.restaurant.billing;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +25,8 @@ import com.hospitality.operations.domain.restaurant.menu.MenuItemRepository;
 import com.hospitality.operations.domain.restaurant.order.OrderItem;
 import com.hospitality.operations.domain.restaurant.order.RestaurantOrder;
 import com.hospitality.operations.domain.restaurant.order.RestaurantOrderRepository;
+import com.hospitality.operations.domain.restaurant.table.DiningTable;
+import com.hospitality.operations.domain.restaurant.table.DiningTableRepository;
 import com.hospitality.operations.domain.room.Room;
 import com.hospitality.operations.domain.room.RoomRepository;
 import com.hospitality.operations.exception.ResourceNotFoundException;
@@ -33,22 +39,25 @@ import lombok.RequiredArgsConstructor;
 public class BillServiceImpl implements BillService {
 
     private static final BigDecimal DEFAULT_TAX_RATE = new BigDecimal("0.08875");
+    private static final AtomicLong invoiceCounter = new AtomicLong(0);
 
     private final BillRepository billRepository;
+    private final BillLineItemRepository billLineItemRepository;
     private final RestaurantOrderRepository orderRepository;
     private final MenuItemRepository menuItemRepository;
     private final RoomRepository roomRepository;
+    private final DiningTableRepository diningTableRepository;
     private final InvoiceDescriptionService invoiceDescriptionService;
 
     @Override
     @Transactional
     public BillResponseDto generateBill(BillRequestDto requestDto) {
-        // 1. Gather line items from all sources
-        List<BillResponseDto.LineItemDto> lineItems = new ArrayList<>();
+        List<BillResponseDto.LineItemDto> lineItemDtos = new ArrayList<>();
         List<String> descriptionParts = new ArrayList<>();
         String orderReference = null;
         Long orderId = requestDto.getOrderId();
         Long tableId = null;
+        BigDecimal subtotal = BigDecimal.ZERO;
 
         // 1a. Restaurant order items
         if (orderId != null) {
@@ -60,55 +69,124 @@ public class BillServiceImpl implements BillService {
                 String itemName = menuItemRepository.findById(item.getMenuItemId())
                         .map(MenuItem::getName)
                         .orElse("Item #" + item.getMenuItemId());
-                lineItems.add(BillResponseDto.LineItemDto.builder()
+                BillResponseDto.LineItemDto li = BillResponseDto.LineItemDto.builder()
+                        .itemType("ORDER_ITEM")
+                        .itemId(item.getId())
                         .quantity(item.getQuantity())
                         .description(itemName)
                         .unitPrice(item.getUnitPrice())
                         .price(item.getSubtotal())
-                        .build());
+                        .build();
+                lineItemDtos.add(li);
                 descriptionParts.add(item.getQuantity() + "x " + itemName);
+                subtotal = subtotal.add(item.getSubtotal());
             }
         }
 
-        // 1b. Room charges
+        // 1b. Selected rooms (from card selection)
+        List<Long> selectedRoomIds = requestDto.getSelectedRoomIds();
+        if (selectedRoomIds != null && !selectedRoomIds.isEmpty()) {
+            for (Long roomId : selectedRoomIds) {
+                Room room = roomRepository.findById(roomId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Room", "id", roomId));
+                BigDecimal total = room.getRatePerNight();
+                BillResponseDto.LineItemDto li = BillResponseDto.LineItemDto.builder()
+                        .itemType("ROOM")
+                        .itemId(roomId)
+                        .quantity(1)
+                        .description("RM " + room.getRoomNumber() + " \u2014 " + room.getType() + " (1 NT)")
+                        .unitPrice(room.getRatePerNight())
+                        .price(total)
+                        .build();
+                lineItemDtos.add(li);
+                descriptionParts.add("1 NT RM " + room.getRoomNumber());
+                subtotal = subtotal.add(total);
+            }
+        }
+
+        // 1c. Legacy room items (roomId + nights)
         List<BillRequestDto.RoomBillItem> roomItems = requestDto.getRoomItems();
         if (roomItems != null && !roomItems.isEmpty()) {
             for (BillRequestDto.RoomBillItem ri : roomItems) {
+                if (selectedRoomIds != null && selectedRoomIds.contains(ri.getRoomId())) continue;
                 Room room = roomRepository.findById(ri.getRoomId())
                         .orElseThrow(() -> new ResourceNotFoundException("Room", "id", ri.getRoomId()));
                 int nights = ri.getNights() != null ? ri.getNights() : 1;
                 BigDecimal total = room.getRatePerNight().multiply(BigDecimal.valueOf(nights));
-                lineItems.add(BillResponseDto.LineItemDto.builder()
+                BillResponseDto.LineItemDto li = BillResponseDto.LineItemDto.builder()
+                        .itemType("ROOM")
+                        .itemId(ri.getRoomId())
                         .quantity(nights)
-                        .description("RM " + room.getRoomNumber() + " — " + room.getType() + " (" + nights + " NT)")
+                        .description("RM " + room.getRoomNumber() + " \u2014 " + room.getType() + " (" + nights + " NT)")
                         .unitPrice(room.getRatePerNight())
                         .price(total)
-                        .build());
+                        .build();
+                lineItemDtos.add(li);
                 descriptionParts.add(nights + " NT RM " + room.getRoomNumber());
+                subtotal = subtotal.add(total);
             }
         }
 
-        // 1c. Custom items
+        // 1d. Selected tables (from card selection)
+        List<Long> selectedTableIds = requestDto.getSelectedTableIds();
+        if (selectedTableIds != null && !selectedTableIds.isEmpty()) {
+            for (Long tid : selectedTableIds) {
+                DiningTable dt = diningTableRepository.findById(tid)
+                        .orElseThrow(() -> new ResourceNotFoundException("DiningTable", "id", tid));
+                BigDecimal coverCharge = BigDecimal.ZERO;
+                BillResponseDto.LineItemDto li = BillResponseDto.LineItemDto.builder()
+                        .itemType("TABLE")
+                        .itemId(tid)
+                        .quantity(1)
+                        .description("TABLE " + dt.getTableNumber())
+                        .unitPrice(coverCharge)
+                        .price(coverCharge)
+                        .build();
+                lineItemDtos.add(li);
+                descriptionParts.add("Table " + dt.getTableNumber());
+                if (tableId == null) tableId = tid;
+            }
+        }
+
+        // 1e. Selected menu items (from card selection)
+        List<Long> selectedMenuItemIds = requestDto.getSelectedMenuItemIds();
+        if (selectedMenuItemIds != null && !selectedMenuItemIds.isEmpty()) {
+            List<MenuItem> menuItems = menuItemRepository.findAllById(selectedMenuItemIds);
+            for (MenuItem mi : menuItems) {
+                BillResponseDto.LineItemDto li = BillResponseDto.LineItemDto.builder()
+                        .itemType("MENU_ITEM")
+                        .itemId(mi.getId())
+                        .quantity(1)
+                        .description(mi.getName())
+                        .unitPrice(mi.getPrice())
+                        .price(mi.getPrice())
+                        .build();
+                lineItemDtos.add(li);
+                descriptionParts.add("1x " + mi.getName());
+                subtotal = subtotal.add(mi.getPrice());
+            }
+        }
+
+        // 1f. Custom additional items
         List<AdditionalItemDto> additionalItems = requestDto.getAdditionalItems();
         if (additionalItems != null) {
             for (AdditionalItemDto item : additionalItems) {
                 BigDecimal total = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-                lineItems.add(BillResponseDto.LineItemDto.builder()
+                BillResponseDto.LineItemDto li = BillResponseDto.LineItemDto.builder()
+                        .itemType("CUSTOM")
+                        .itemId(null)
                         .quantity(item.getQuantity())
                         .description(item.getDescription())
                         .unitPrice(item.getUnitPrice())
                         .price(total)
-                        .build());
+                        .build();
+                lineItemDtos.add(li);
                 descriptionParts.add(item.getQuantity() + "x " + item.getDescription());
+                subtotal = subtotal.add(total);
             }
         }
 
-        // 2. Calculate subtotal
-        BigDecimal subtotal = lineItems.stream()
-                .map(BillResponseDto.LineItemDto::getPrice)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // 3. Calculate tax and discount
+        // 2. Calculate tax and discount
         BigDecimal taxRate = DEFAULT_TAX_RATE;
         BigDecimal taxAmount = subtotal.multiply(taxRate).setScale(2, RoundingMode.HALF_UP);
         BigDecimal discount = requestDto.getDiscount() != null
@@ -116,8 +194,11 @@ public class BillServiceImpl implements BillService {
                 : BigDecimal.ZERO;
         BigDecimal totalDue = subtotal.add(taxAmount).subtract(discount).setScale(2, RoundingMode.HALF_UP);
 
+        // 3. Generate invoice number
+        String invoiceNumber = generateInvoiceNumber();
+
         // 4. Generate description
-        String ref = orderReference != null ? orderReference : "INV";
+        String ref = orderReference != null ? orderReference : invoiceNumber;
         String aiDescription = invoiceDescriptionService.generateDescription(ref, descriptionParts);
 
         // 5. Build and save bill
@@ -126,6 +207,12 @@ public class BillServiceImpl implements BillService {
                 .orderReference(orderReference)
                 .tableId(tableId)
                 .serverName(requestDto.getServerName())
+                .customerName(requestDto.getCustomerName())
+                .phoneNumber(requestDto.getPhoneNumber())
+                .email(requestDto.getEmail())
+                .notes(requestDto.getNotes())
+                .invoiceNumber(invoiceNumber)
+                .status(BillStatus.PAID)
                 .subtotal(subtotal)
                 .taxRate(taxRate)
                 .taxAmount(taxAmount)
@@ -136,31 +223,55 @@ public class BillServiceImpl implements BillService {
                 .build();
 
         Bill saved = billRepository.save(bill);
-        return BillMapper.toDto(saved, lineItems);
+
+        // 6. Persist line items
+        List<BillLineItem> persistedItems = new ArrayList<>();
+        for (BillResponseDto.LineItemDto liDto : lineItemDtos) {
+            BillLineItem bli = BillLineItem.builder()
+                    .bill(saved)
+                    .itemType(liDto.getItemType())
+                    .itemId(liDto.getItemId())
+                    .description(liDto.getDescription())
+                    .quantity(liDto.getQuantity())
+                    .unitPrice(liDto.getUnitPrice())
+                    .totalPrice(liDto.getPrice())
+                    .tenantSchema(saved.getTenantSchema())
+                    .build();
+            persistedItems.add(bli);
+        }
+        billLineItemRepository.saveAll(persistedItems);
+
+        return BillMapper.toDto(saved, lineItemDtos);
     }
 
     @Override
     public BillResponseDto getBillById(Long id) {
         Bill bill = billRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Bill", "id", id));
-        List<BillResponseDto.LineItemDto> lineItems = buildLineItems(bill.getOrderId());
-        return BillMapper.toDto(bill, lineItems);
+        List<BillResponseDto.LineItemDto> lineItems = buildLineItemsFromDb(bill);
+        BillResponseDto dto = BillMapper.toDto(bill, lineItems);
+        enrichTableNumber(dto);
+        return dto;
     }
 
     @Override
     public BillResponseDto getBillByOrderId(Long orderId) {
         Bill bill = billRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bill", "orderId", orderId));
-        List<BillResponseDto.LineItemDto> lineItems = buildLineItems(orderId);
-        return BillMapper.toDto(bill, lineItems);
+        List<BillResponseDto.LineItemDto> lineItems = buildLineItemsFromDb(bill);
+        BillResponseDto dto = BillMapper.toDto(bill, lineItems);
+        enrichTableNumber(dto);
+        return dto;
     }
 
     @Override
     public List<BillResponseDto> getAllBills() {
         return billRepository.findAll().stream()
                 .map(bill -> {
-                    List<BillResponseDto.LineItemDto> lineItems = buildLineItems(bill.getOrderId());
-                    return BillMapper.toDto(bill, lineItems);
+                    List<BillResponseDto.LineItemDto> lineItems = buildLineItemsFromDb(bill);
+                    BillResponseDto dto = BillMapper.toDto(bill, lineItems);
+                    enrichTableNumber(dto);
+                    return dto;
                 })
                 .toList();
     }
@@ -177,25 +288,39 @@ public class BillServiceImpl implements BillService {
         } else {
             billPage = billRepository.findAll(pageable);
         }
-        return billPage.map(bill -> BillMapper.toDto(bill, List.of()));
+        return billPage.map(bill -> {
+            List<BillResponseDto.LineItemDto> lineItems = buildLineItemsFromDb(bill);
+            BillResponseDto dto = BillMapper.toDto(bill, lineItems);
+            enrichTableNumber(dto);
+            return dto;
+        });
     }
 
-    private List<BillResponseDto.LineItemDto> buildLineItems(Long orderId) {
-        if (orderId == null) return List.of();
-        return orderRepository.findById(orderId)
-                .map(order -> order.getItems().stream()
-                        .map(item -> {
-                            String itemName = menuItemRepository.findById(item.getMenuItemId())
-                                    .map(MenuItem::getName)
-                                    .orElse("Item #" + item.getMenuItemId());
-                            return BillResponseDto.LineItemDto.builder()
-                                    .quantity(item.getQuantity())
-                                    .description(itemName)
-                                    .unitPrice(item.getUnitPrice())
-                                    .price(item.getSubtotal())
-                                    .build();
-                        })
-                        .toList())
-                .orElse(List.of());
+    private List<BillResponseDto.LineItemDto> buildLineItemsFromDb(Bill bill) {
+        return billLineItemRepository.findByBillId(bill.getId()).stream()
+                .map(bli -> BillResponseDto.LineItemDto.builder()
+                        .id(bli.getId())
+                        .itemType(bli.getItemType())
+                        .itemId(bli.getItemId())
+                        .quantity(bli.getQuantity())
+                        .description(bli.getDescription())
+                        .unitPrice(bli.getUnitPrice())
+                        .price(bli.getTotalPrice())
+                        .build())
+                .toList();
+    }
+
+    private void enrichTableNumber(BillResponseDto dto) {
+        if (dto.getTableId() != null) {
+            diningTableRepository.findById(dto.getTableId())
+                    .ifPresent(t -> dto.setTableNumber(t.getTableNumber()));
+        }
+    }
+
+    private String generateInvoiceNumber() {
+        String datePart = LocalDate.now(ZoneId.of("Asia/Kolkata"))
+                .format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        long seq = invoiceCounter.incrementAndGet() % 10000;
+        return "INV-" + datePart + "-" + String.format("%04d", seq);
     }
 }

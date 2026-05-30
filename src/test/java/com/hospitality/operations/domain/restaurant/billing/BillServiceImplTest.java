@@ -26,6 +26,7 @@ import com.hospitality.operations.ai.InvoiceDescriptionService;
 import com.hospitality.operations.domain.restaurant.billing.dto.BillResponseDto;
 import com.hospitality.operations.domain.restaurant.menu.MenuItemRepository;
 import com.hospitality.operations.domain.restaurant.order.RestaurantOrderRepository;
+import com.hospitality.operations.domain.restaurant.table.DiningTableRepository;
 import com.hospitality.operations.domain.room.RoomRepository;
 import com.hospitality.operations.exception.ResourceNotFoundException;
 
@@ -34,6 +35,9 @@ class BillServiceImplTest {
 
     @Mock
     private BillRepository billRepository;
+
+    @Mock
+    private BillLineItemRepository billLineItemRepository;
 
     @Mock
     private RestaurantOrderRepository orderRepository;
@@ -45,20 +49,25 @@ class BillServiceImplTest {
     private RoomRepository roomRepository;
 
     @Mock
+    private DiningTableRepository diningTableRepository;
+
+    @Mock
     private InvoiceDescriptionService invoiceDescriptionService;
 
     private BillServiceImpl billService;
 
     @BeforeEach
     void setUp() {
-        billService = new BillServiceImpl(billRepository, orderRepository, menuItemRepository,
-                roomRepository, invoiceDescriptionService);
+        billService = new BillServiceImpl(billRepository, billLineItemRepository, orderRepository,
+                menuItemRepository, roomRepository, diningTableRepository, invoiceDescriptionService);
     }
 
     @Test
     void getBillById_shouldReturnBill() {
         Bill bill = Bill.builder()
                 .id(1L).orderReference("ORD-001")
+                .invoiceNumber("INV-20260530-0001")
+                .status(BillStatus.PAID)
                 .subtotal(new BigDecimal("100.00"))
                 .taxRate(new BigDecimal("0.08875"))
                 .taxAmount(new BigDecimal("8.88"))
@@ -69,12 +78,15 @@ class BillServiceImplTest {
                 .build();
 
         when(billRepository.findById(1L)).thenReturn(Optional.of(bill));
+        when(billLineItemRepository.findByBillId(1L)).thenReturn(List.of());
 
         BillResponseDto response = billService.getBillById(1L);
 
         assertNotNull(response);
         assertEquals("ORD-001", response.getOrderReference());
         assertEquals(new BigDecimal("100.00"), response.getSubtotal());
+        assertEquals("INV-20260530-0001", response.getInvoiceNumber());
+        assertEquals(BillStatus.PAID, response.getStatus());
     }
 
     @Test
@@ -87,6 +99,8 @@ class BillServiceImplTest {
     void getBills_shouldReturnPaginatedResults() {
         Bill bill = Bill.builder()
                 .id(1L).orderReference("ORD-001")
+                .invoiceNumber("INV-20260530-0001")
+                .status(BillStatus.PAID)
                 .subtotal(new BigDecimal("100.00"))
                 .taxRate(new BigDecimal("0.08875"))
                 .taxAmount(new BigDecimal("8.88"))
@@ -99,6 +113,7 @@ class BillServiceImplTest {
         Pageable pageable = PageRequest.of(0, 10);
         when(billRepository.findAll(pageable))
                 .thenReturn(new PageImpl<>(List.of(bill), pageable, 1));
+        when(billLineItemRepository.findByBillId(1L)).thenReturn(List.of());
 
         Page<BillResponseDto> result = billService.getBills(null, null, pageable);
 
@@ -115,6 +130,8 @@ class BillServiceImplTest {
 
         Bill bill = Bill.builder()
                 .id(1L).orderReference("ORD-001")
+                .invoiceNumber("INV-20260530-0001")
+                .status(BillStatus.PAID)
                 .subtotal(new BigDecimal("50.00"))
                 .taxRate(new BigDecimal("0.08875"))
                 .taxAmount(new BigDecimal("4.44"))
@@ -127,6 +144,7 @@ class BillServiceImplTest {
         Pageable pageable = PageRequest.of(0, 10);
         when(billRepository.findAllByCreatedAtBetween(from, to, pageable))
                 .thenReturn(new PageImpl<>(List.of(bill), pageable, 1));
+        when(billLineItemRepository.findByBillId(1L)).thenReturn(List.of());
 
         Page<BillResponseDto> result = billService.getBills(from, to, pageable);
 
@@ -139,6 +157,8 @@ class BillServiceImplTest {
         Instant from = Instant.now().minusSeconds(86400);
         Bill bill = Bill.builder()
                 .id(2L).orderReference("ORD-002")
+                .invoiceNumber("INV-20260530-0002")
+                .status(BillStatus.PAID)
                 .subtotal(new BigDecimal("75.00"))
                 .taxRate(new BigDecimal("0.08875"))
                 .taxAmount(new BigDecimal("6.66"))
@@ -151,6 +171,7 @@ class BillServiceImplTest {
         Pageable pageable = PageRequest.of(0, 10);
         when(billRepository.findAllByCreatedAtAfter(from, pageable))
                 .thenReturn(new PageImpl<>(List.of(bill), pageable, 1));
+        when(billLineItemRepository.findByBillId(2L)).thenReturn(List.of());
 
         Page<BillResponseDto> result = billService.getBills(from, null, pageable);
 
@@ -163,6 +184,8 @@ class BillServiceImplTest {
         Instant to = Instant.now().plusSeconds(86400);
         Bill bill = Bill.builder()
                 .id(3L).orderReference("ORD-003")
+                .invoiceNumber("INV-20260530-0003")
+                .status(BillStatus.PAID)
                 .subtotal(new BigDecimal("200.00"))
                 .taxRate(new BigDecimal("0.08875"))
                 .taxAmount(new BigDecimal("17.75"))
@@ -175,11 +198,13 @@ class BillServiceImplTest {
         Pageable pageable = PageRequest.of(0, 10);
         when(billRepository.findAllByCreatedAtBefore(to, pageable))
                 .thenReturn(new PageImpl<>(List.of(bill), pageable, 1));
+        when(billLineItemRepository.findByBillId(3L)).thenReturn(List.of());
 
         Page<BillResponseDto> result = billService.getBills(null, to, pageable);
 
         assertEquals(1, result.getTotalElements());
         assertEquals(new BigDecimal("10.00"), result.getContent().get(0).getDiscount());
+        assertEquals("INV-20260530-0003", result.getContent().get(0).getInvoiceNumber());
         verify(billRepository).findAllByCreatedAtBefore(to, pageable);
     }
 }

@@ -36,6 +36,91 @@ $$('.modal-overlay').forEach(ov => {
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $$('.modal-overlay.open').forEach(m => m.classList.remove('open')); });
 
+// ── GLOBAL SELECTION SYSTEM ────────────────
+const _sel = { items: new Map() };
+document.addEventListener('DOMContentLoaded', _restoreSel);
+
+function selToggle(type, id, displayName, info, price, event) {
+    if (event && event.target.closest('button')) return;
+    const key = type + ':' + id;
+    if (_sel.items.has(key)) {
+        _sel.items.delete(key);
+        if (event && event.currentTarget) event.currentTarget.classList.remove('selected');
+    } else {
+        _sel.items.set(key, { type, id, displayName, info, price, qty: 1 });
+        if (event && event.currentTarget) event.currentTarget.classList.add('selected');
+    }
+    _persistSel();
+    _refreshFab();
+}
+
+function selClear() {
+    _sel.items.clear();
+    _persistSel();
+    _refreshFab();
+    document.querySelectorAll('.card-selectable.selected').forEach(c => c.classList.remove('selected'));
+    closeBillingCart();
+}
+
+function selCount() { return _sel.items.size; }
+
+function selGetAll() { return Array.from(_sel.items.values()); }
+
+function selHas(type, id) { return _sel.items.has(type + ':' + id); }
+
+function selUpdateQty(type, id, qty) {
+    const key = type + ':' + id;
+    if (_sel.items.has(key)) {
+        _sel.items.get(key).qty = Math.max(1, parseInt(qty) || 1);
+        _persistSel();
+    }
+}
+
+function selRemove(type, id) {
+    const key = type + ':' + id;
+    _sel.items.delete(key);
+    _persistSel();
+    _refreshFab();
+    document.querySelector('.card-selectable[data-sel-type="' + type + '"][data-sel-id="' + id + '"]')?.classList.remove('selected');
+    renderBillingCartItems();
+}
+
+function _persistSel() {
+    try {
+        const obj = {};
+        _sel.items.forEach((v, k) => { obj[k] = v; });
+        sessionStorage.setItem('opsSel', JSON.stringify(obj));
+    } catch (e) {}
+}
+
+function _restoreSel() {
+    try {
+        const raw = sessionStorage.getItem('opsSel');
+        if (raw) {
+            const obj = JSON.parse(raw);
+            _sel.items = new Map();
+            Object.entries(obj).forEach(([k, v]) => _sel.items.set(k, v));
+        }
+    } catch (e) {}
+}
+
+function _refreshFab() {
+    const fab = document.getElementById('fab-billing');
+    const cnt = document.getElementById('fab-count');
+    if (!fab || !cnt) return;
+    const c = selCount();
+    fab.style.display = c > 0 ? 'flex' : 'none';
+    cnt.textContent = c;
+}
+
+function _refreshCardClasses() {
+    document.querySelectorAll('.card-selectable').forEach(el => {
+        const type = el.dataset.selType;
+        const id = parseInt(el.dataset.selId);
+        el.classList.toggle('selected', selHas(type, id));
+    });
+}
+
 // ── AUTH STATE ─────────────────────────────
 let authToken = localStorage.getItem('authToken') || null;
 let isAuthenticated = !!authToken;
@@ -159,7 +244,7 @@ const navHistory = [];
 let currentPage = 'home';
 
 // Pages that show the sidebar
-const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'action-items', 'invoice-history', 'inventory', 'assistant']);
+const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'table-mgmt', 'action-items', 'invoice-history', 'inventory', 'calculator', 'assistant']);
 
 // Map pages → topbar titles
 const pageTitles = {
@@ -174,6 +259,7 @@ const pageTitles = {
     'billing': 'BILLING',
     'invoice-history': 'INVOICE HISTORY',
     'inventory': 'INVENTORY',
+    'calculator': 'CALCULATOR',
     'assistant': 'ASSISTANT',
 };
 
@@ -189,6 +275,7 @@ const pageParent = {
     'billing': 'restaurant',
     'invoice-history': 'home',
     'inventory': 'home',
+    'calculator': 'home',
     'assistant': 'home',
 };
 
@@ -202,6 +289,7 @@ const sidebarActive = {
     'action-items': 'action-items',
     'invoice-history': 'invoice-history',
     'inventory': 'inventory',
+    'calculator': 'calculator',
     'assistant': 'assistant',
 };
 
@@ -243,11 +331,17 @@ function showPage(page) {
     if (page === 'rooms-search') loadRooms();
     if (page === 'menu-mgmt') loadMenu();
     if (page === 'action-items') loadActionItems();
+    if (page === 'table-mgmt') loadTables();
     if (page === 'billing') loadBillingPage();
     if (page === 'order-mgmt') loadOrders();
     if (page === 'invoice-history') loadInvoiceHistory();
     if (page === 'inventory') loadInventory();
+    if (page === 'calculator') initCalculator();
     if (page === 'assistant') initAssistant();
+
+    // Restore selection card classes after page render
+    setTimeout(_refreshCardClasses, 50);
+    _refreshFab();
 }
 
 // Back button
@@ -314,8 +408,9 @@ function renderRoomGrid() {
     }
     grid.innerHTML = data.map(r => {
         const showIssue = r.status === 'UNDER_MAINTENANCE';
+        const selClass = selHas('room', r.id) ? ' selected' : '';
         return `
-        <div class="room-card">
+        <div class="room-card card-selectable${selClass}" data-sel-type="room" data-sel-id="${r.id}" onclick="selToggle('room',${r.id},'RM ${r.roomNumber}','${fmtType(r.type)}',${r.ratePerNight},event)">
             <div class="room-card-header">
                 <span class="room-card-id">RM ${r.roomNumber}</span>
                 <span class="badge ${roomBadgeClass(r.status)}">${fmtStatus(r.status)}</span>
@@ -330,9 +425,8 @@ function renderRoomGrid() {
             </div>
             <div class="room-card-image">${r.imageUrl ? `<img src="${r.imageUrl}" alt="Room ${r.roomNumber}">` : 'NO IMAGE'}</div>
             <div class="room-card-actions" style="margin-top:12px;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
-                <button class="btn btn-outline btn-sm" onclick="billRoom(${r.id})" style="color:var(--primary)">BILL</button>
-                <button class="btn btn-outline btn-sm" onclick="editRoom(${r.id})">EDIT</button>
-                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="confirmDeleteRoom(${r.id},'${r.roomNumber}')">DELETE</button>
+                <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editRoom(${r.id})">EDIT</button>
+                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();confirmDeleteRoom(${r.id},'${r.roomNumber}')">DELETE</button>
             </div>
         </div>`;
     }).join('');
@@ -445,8 +539,11 @@ function renderMenuGrid() {
     } else if (!data.length) {
         html = `<div class="empty-state"><div class="empty-state-icon">🍽️</div><p>No menu items yet. Add your first item!</p></div>`;
     } else {
-        html = data.map(item => `
-        <div class="menu-card${item.available ? '' : ' unavailable'}">
+        html = data.map(item => {
+            const selClass = selHas('menu', item.id) ? ' selected' : '';
+            const escapedName = item.name.replace(/'/g,"\\'");
+            return `
+        <div class="menu-card card-selectable${selClass}${item.available ? '' : ' unavailable'}" data-sel-type="menu" data-sel-id="${item.id}" onclick="selToggle('menu',${item.id},'${escapedName}','${item.category}',${item.price},event)">
             <div class="menu-card-header">
                 <span class="menu-card-name">${item.name}</span>
                 <span class="menu-card-price">${fmt(item.price)}</span>
@@ -455,10 +552,11 @@ function renderMenuGrid() {
                 <span class="badge badge-outlined">${item.category}</span>
             </div>
             <div class="menu-card-footer">
-                <button class="btn btn-outline btn-sm" onclick="editMenuItem(${item.id})">EDIT</button>
-                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="confirmDeleteMenu(${item.id},'${item.name.replace(/'/g,"\\'")}')">DELETE</button>
+                <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editMenuItem(${item.id})">EDIT</button>
+                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();confirmDeleteMenu(${item.id},'${escapedName}')">DELETE</button>
             </div>
-        </div>`).join('');
+        </div>`;
+        }).join('');
     }
 
     // Always append the "Add New Item" card
@@ -753,7 +851,57 @@ $$('#table-tab-bar .tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         $$('#table-tab-bar .tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        loadTables();
     });
+});
+
+let tablesData = [];
+
+async function loadTables() {
+    const activeBtn = document.querySelector('#table-tab-bar .tab-btn.active');
+    const statusFilter = activeBtn ? activeBtn.dataset.value : '';
+    const searchTerm = document.getElementById('table-search')?.value?.trim() || '';
+    try {
+        const params = new URLSearchParams();
+        if (statusFilter) params.set('status', statusFilter.toUpperCase());
+        if (searchTerm) params.set('search', searchTerm);
+        const qs = params.toString();
+        const url = qs ? `${API.tables}?${qs}` : API.tables;
+        tablesData = await api(url);
+        renderTableGrid();
+    } catch (e) { /* toast shown */ }
+}
+
+function renderTableGrid() {
+    const grid = document.getElementById('table-grid');
+    if (!grid) return;
+    if (!tablesData.length) {
+        grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🪑</div><p>No tables found.</p></div>';
+        return;
+    }
+    grid.innerHTML = tablesData.map(t => {
+        const statusClass = t.status === 'AVAILABLE' ? 'table-card-available'
+                          : t.status === 'OCCUPIED' ? 'table-card-occupied'
+                          : 'table-card-reserved';
+        const selClass = selHas('table', t.id) ? ' selected' : '';
+        return `
+        <div class="table-card ${statusClass} card-selectable${selClass}" data-sel-type="table" data-sel-id="${t.id}" onclick="selToggle('table',${t.id},'TABLE ${t.tableNumber}','Cap: ${t.capacity}',0,event)">
+            <div class="table-card-header">
+                <span class="table-card-id">${t.tableNumber}</span>
+                <span class="badge ${t.status === 'AVAILABLE' ? 'badge-dashed' : t.status === 'OCCUPIED' ? 'badge-filled' : 'badge-outlined'}">${t.status}</span>
+            </div>
+            <div class="table-card-body">
+                <div class="table-card-detail">Capacity: ${t.capacity}</div>
+                ${t.location ? `<div class="table-card-detail">${t.location}</div>` : ''}
+                ${t.reservationName ? `<div class="table-card-detail">Reserved: ${t.reservationName}</div>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// Table search
+document.getElementById('table-search')?.addEventListener('input', function() {
+    loadTables();
 });
 
 // ═══════════════════════════════════════════
@@ -1086,18 +1234,6 @@ let billingMenuSearchTerm = '';
 let billingOrderSearchTerm = '';
 
 function fmtCurrency(val) { return '₹' + Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-
-window.billRoom = function(roomId) {
-    const room = roomsData.find(r => r.id === roomId);
-    if (!room) return;
-    if (billingCart.rooms.find(r => r.id === roomId)) {
-        toast('Room already in cart', 'error');
-        return;
-    }
-    billingCart.rooms.push({ id: room.id, roomNumber: room.roomNumber, type: room.type, ratePerNight: room.ratePerNight, nights: 1 });
-    toast('Room added to invoice');
-    navigate('billing');
-};
 
 async function loadBillingPage() {
     const cartView = document.getElementById('billing-cart-view');
@@ -1579,7 +1715,7 @@ function renderInvoiceHistory() {
     }
 
     tbody.innerHTML = items.map(inv => {
-        const ref = inv.orderReference || 'INV-' + String(inv.id).padStart(4, '0');
+        const ref = inv.invoiceNumber || inv.orderReference || 'INV-' + String(inv.id).padStart(4, '0');
         const itemsSummary = inv.aiDescription
             ? inv.aiDescription.substring(0, 50) + (inv.aiDescription.length > 50 ? '…' : '')
             : '—';
@@ -1897,6 +2033,275 @@ function initAssistant() {
 
     sendBtn?.addEventListener('click', sendQuery);
     input?.addEventListener('keydown', function(e) { if (e.key === 'Enter') sendQuery(); });
+}
+
+// ═══════════════════════════════════════════
+//  CALCULATOR MODULE
+// ═══════════════════════════════════════════
+let calcState = { display: '0', previous: 0, operator: null, waiting: false, done: false };
+
+function initCalculator() {
+    calcState = { display: '0', previous: 0, operator: null, waiting: false, done: false };
+    const screen = document.getElementById('calc-screen');
+    if (screen) screen.textContent = '0';
+    const taxInput = document.getElementById('calc-tax-rate');
+    const discInput = document.getElementById('calc-discount-rate');
+    if (taxInput) taxInput.value = '8.875';
+    if (discInput) discInput.value = '0';
+    const resultDisplay = document.getElementById('calc-result-display');
+    if (resultDisplay) resultDisplay.textContent = '\u20B90.00';
+}
+
+function calcRefresh() {
+    const screen = document.getElementById('calc-screen');
+    if (screen) screen.textContent = calcState.display;
+}
+
+function calcDigit(d) {
+    if (calcState.done) {
+        calcState.display = d === '.' ? '0.' : d;
+        calcState.done = false;
+        calcState.operator = null;
+        calcState.previous = 0;
+        calcRefresh();
+        return;
+    }
+    if (calcState.waiting) {
+        calcState.display = d === '.' ? '0.' : d;
+        calcState.waiting = false;
+        calcRefresh();
+        return;
+    }
+    if (d === '.') {
+        if (calcState.display.includes('.')) return;
+        calcState.display += '.';
+    } else {
+        if (calcState.display === '0') {
+            calcState.display = d;
+        } else {
+            calcState.display += d;
+        }
+    }
+    calcRefresh();
+}
+
+function calcOperator(op) {
+    const current = parseFloat(calcState.display);
+    if (calcState.operator && !calcState.waiting) {
+        calcState.display = calcCompute(calcState.previous, current, calcState.operator);
+        calcState.previous = parseFloat(calcState.display);
+    } else {
+        calcState.previous = current;
+    }
+    calcState.operator = op;
+    calcState.waiting = true;
+    calcState.done = false;
+    calcRefresh();
+}
+
+function calcEquals() {
+    if (!calcState.operator) return;
+    const current = parseFloat(calcState.display);
+    const result = calcCompute(calcState.previous, current, calcState.operator);
+    calcState.display = formatCalcResult(result);
+    calcState.operator = null;
+    calcState.waiting = false;
+    calcState.done = true;
+    calcRefresh();
+}
+
+function calcCompute(a, b, op) {
+    switch (op) {
+        case '+': return a + b;
+        case '-': return a - b;
+        case '*': return a * b;
+        case '/': return b !== 0 ? a / b : 0;
+        default: return b;
+    }
+}
+
+function formatCalcResult(n) {
+    if (!isFinite(n) || isNaN(n)) return 'Error';
+    return String(parseFloat(n.toFixed(10)));
+}
+
+function calcClear() {
+    calcState = { display: '0', previous: 0, operator: null, waiting: false, done: false };
+    calcRefresh();
+}
+
+function calcNegate() {
+    if (calcState.display === '0') return;
+    calcState.display = calcState.display.startsWith('-')
+        ? calcState.display.slice(1)
+        : '-' + calcState.display;
+    calcRefresh();
+}
+
+function calcPercent() {
+    const val = parseFloat(calcState.display) / 100;
+    calcState.display = formatCalcResult(val);
+    calcRefresh();
+}
+
+function calcBackspace() {
+    if (calcState.done || calcState.waiting) return;
+    if (calcState.display.length <= 1 || (calcState.display.length === 2 && calcState.display.startsWith('-'))) {
+        calcState.display = '0';
+    } else {
+        calcState.display = calcState.display.slice(0, -1);
+    }
+    calcRefresh();
+}
+
+function calcApplyTax() {
+    const rate = parseFloat(document.getElementById('calc-tax-rate')?.value) || 0;
+    const base = parseFloat(calcState.display);
+    if (isNaN(base)) return;
+    const result = base + (base * rate / 100);
+    calcState.display = formatCalcResult(result);
+    calcState.done = true;
+    calcRefresh();
+    const resultDisplay = document.getElementById('calc-result-display');
+    if (resultDisplay) resultDisplay.textContent = '\u20B9' + Number(result).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function calcApplyDiscount() {
+    const rate = parseFloat(document.getElementById('calc-discount-rate')?.value) || 0;
+    const base = parseFloat(calcState.display);
+    if (isNaN(base)) return;
+    const result = base - (base * rate / 100);
+    calcState.display = formatCalcResult(result);
+    calcState.done = true;
+    calcRefresh();
+    const resultDisplay = document.getElementById('calc-result-display');
+    if (resultDisplay) resultDisplay.textContent = '\u20B9' + Number(result).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Keyboard support
+document.addEventListener('keydown', function(e) {
+    const page = document.getElementById('page-calculator');
+    if (!page || !page.classList.contains('active')) return;
+    if (e.key >= '0' && e.key <= '9') { calcDigit(e.key); return; }
+    if (e.key === '.') { calcDigit('.'); return; }
+    if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); calcEquals(); return; }
+    if (e.key === 'Escape') { calcClear(); return; }
+    if (e.key === 'Backspace') { e.preventDefault(); calcBackspace(); return; }
+    if (e.key === '+' || e.key === '-') { calcOperator(e.key); return; }
+    if (e.key === '*') { calcOperator('*'); return; }
+    if (e.key === '/') { e.preventDefault(); calcOperator('/'); return; }
+    if (e.key === '%') { calcPercent(); return; }
+});
+
+// ═══════════════════════════════════════════
+//  BILLING CART MODAL (FAB → Invoice)
+// ═══════════════════════════════════════════
+
+function openBillingCart() {
+    renderBillingCartItems();
+    const body = document.getElementById('billing-cart-body');
+    if (body) body.scrollTop = 0;
+    openModal('billing-cart-modal');
+}
+
+function closeBillingCart() {
+    closeModal('billing-cart-modal');
+}
+
+function renderBillingCartItems() {
+    const container = document.getElementById('cart-items-container');
+    const totals = document.getElementById('cart-totals');
+    const actions = document.getElementById('cart-actions');
+    if (!container) return;
+
+    const items = selGetAll();
+    if (!items.length) {
+        container.innerHTML = '<div class="empty-state" style="padding:20px 0"><p>No items selected.</p></div>';
+        if (totals) totals.style.display = 'none';
+        if (actions) actions.style.display = 'none';
+        return;
+    }
+
+    if (totals) totals.style.display = 'block';
+    if (actions) actions.style.display = 'flex';
+
+    container.innerHTML = items.map((item, i) => {
+        const price = parseFloat(item.price) || 0;
+        const lineTotal = price * item.qty;
+        const typeLabel = item.type === 'room' ? 'ROOM' : item.type === 'table' ? 'TABLE' : item.type === 'menu' ? 'MENU' : 'ITEM';
+        return `
+        <div class="cart-item-row">
+            <span class="cart-item-type">${typeLabel}</span>
+            <span class="cart-item-desc">${item.displayName || ''}${item.info ? ' — ' + item.info : ''}</span>
+            <input type="number" class="cart-item-qty input" style="width:50px;margin:0;padding:4px 6px;text-align:center" value="${item.qty}" min="1"
+                onchange="selUpdateQty('${item.type}',${item.id},this.value);renderBillingCartItems()">
+            <span class="cart-item-price">${fmt(price * item.qty)}</span>
+            <button class="cart-item-remove" onclick="selRemove('${item.type}',${item.id})" title="Remove">&times;</button>
+        </div>`;
+    }).join('');
+
+    updateCartTotals();
+}
+
+function updateCartTotals() {
+    const subtotalEl = document.getElementById('cart-subtotal');
+    const taxEl = document.getElementById('cart-tax');
+    const totalEl = document.getElementById('cart-total');
+    if (!subtotalEl) return;
+
+    let subtotal = 0;
+    selGetAll().forEach(item => {
+        subtotal += (parseFloat(item.price) || 0) * (item.qty || 1);
+    });
+
+    const tax = subtotal * 0.08875;
+    const discount = parseFloat(document.getElementById('cart-discount-input')?.value) || 0;
+    const total = subtotal + tax - discount;
+
+    subtotalEl.textContent = fmt(subtotal);
+    taxEl.textContent = fmt(tax);
+    totalEl.textContent = fmt(total);
+}
+
+async function generateInvoiceFromCart() {
+    const name = document.getElementById('cart-customer-name')?.value?.trim();
+    const phone = document.getElementById('cart-phone')?.value?.trim();
+    if (!name || !phone) {
+        toast('Customer Name and Phone Number are required', 'error');
+        return;
+    }
+
+    const items = selGetAll();
+    if (!items.length) {
+        toast('No items selected', 'error');
+        return;
+    }
+
+    const roomIds = items.filter(i => i.type === 'room').map(i => i.id);
+    const tableIds = items.filter(i => i.type === 'table').map(i => i.id);
+    const menuItemIds = items.filter(i => i.type === 'menu').map(i => i.id);
+    const email = document.getElementById('cart-email')?.value?.trim() || null;
+    const notes = document.getElementById('cart-notes')?.value?.trim() || null;
+    const discount = parseFloat(document.getElementById('cart-discount-input')?.value) || 0;
+
+    const body = {
+        customerName: name,
+        phoneNumber: phone,
+        email: email,
+        notes: notes,
+        discount: discount > 0 ? discount : 0,
+        selectedRoomIds: roomIds.length ? roomIds : null,
+        selectedTableIds: tableIds.length ? tableIds : null,
+        selectedMenuItemIds: menuItemIds.length ? menuItemIds : null,
+    };
+
+    try {
+        const result = await api(API.bills, { method: 'POST', body: JSON.stringify(body) });
+        const invRef = result.invoiceNumber || result.orderReference || '#' + result.id;
+        toast('Invoice ' + invRef + ' generated');
+        selClear();
+        closeBillingCart();
+    } catch (e) { /* toast shown */ }
 }
 
 // ═══════════════════════════════════════════

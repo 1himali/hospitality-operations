@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
+import com.hospitality.operations.domain.restaurant.billing.BillStatus;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,7 +23,14 @@ public class BillResponseDto {
     private Long orderId;
     private String orderReference;
     private Long tableId;
+    private String tableNumber;
     private String serverName;
+    private String customerName;
+    private String phoneNumber;
+    private String email;
+    private String invoiceNumber;
+    private BillStatus status;
+    private String notes;
     private BigDecimal subtotal;
     private BigDecimal taxRate;
     private BigDecimal taxAmount;
@@ -31,7 +40,6 @@ public class BillResponseDto {
     private String tenantSchema;
     private Instant createdAt;
 
-    /** Line items from the order for the receipt view */
     private List<LineItemDto> lineItems;
 
     @Getter
@@ -40,6 +48,9 @@ public class BillResponseDto {
     @AllArgsConstructor
     @Builder
     public static class LineItemDto {
+        private Long id;
+        private String itemType;
+        private Long itemId;
         private Integer quantity;
         private String description;
         private BigDecimal unitPrice;

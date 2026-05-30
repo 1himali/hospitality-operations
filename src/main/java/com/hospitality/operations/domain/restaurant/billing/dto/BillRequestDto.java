@@ -31,8 +31,26 @@ public class BillRequestDto {
     @Size(max = 100, message = "Server name must not exceed 100 characters")
     private String serverName;
 
+    @Size(max = 200, message = "Customer name must not exceed 200 characters")
+    private String customerName;
+
+    @Size(max = 20, message = "Phone number must not exceed 20 characters")
+    private String phoneNumber;
+
+    @Size(max = 200, message = "Email must not exceed 200 characters")
+    private String email;
+
+    @Size(max = 2000, message = "Notes must not exceed 2000 characters")
+    private String notes;
+
     @Min(value = 0, message = "Discount must be non-negative")
     private BigDecimal discount;
+
+    private List<Long> selectedRoomIds;
+
+    private List<Long> selectedTableIds;
+
+    private List<Long> selectedMenuItemIds;
 
     @Size(max = 100, message = "Tenant schema must not exceed 100 characters")
     private String tenantSchema;
