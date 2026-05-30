@@ -32,6 +32,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/", "/index.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
+                        // Metrics endpoints — Admin / Owner only
+                        .requestMatchers("/api/v1/metrics/**").hasAnyRole("ADMIN", "OWNER")
                         // All other API requests require authentication
                         .anyRequest().permitAll()
                 )

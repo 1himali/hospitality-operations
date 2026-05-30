@@ -1208,6 +1208,58 @@ input, select, textarea { font-family: var(--font); }
     text-align: right;
 }
 
+/* ═══════════════════════════════════════════
+   API METRICS
+   ═══════════════════════════════════════════ */
+.metrics-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.metrics-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+}
+.metrics-card-value {
+    font-size: var(--fs-2xl);
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    margin-bottom: 6px;
+}
+.metrics-card-label {
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+.metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-sm);
+}
+.metrics-table th {
+    text-align: left;
+    padding: 10px 8px;
+    border-bottom: 2px solid var(--border);
+    font-weight: 800;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.metrics-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: middle;
+}
+.metrics-table tbody tr:hover { background: var(--bg-surface-alt); }
+
 @media (max-width: 768px) {
     .hub-grid { grid-template-columns: 1fr; }
     .page-with-filters { flex-direction: column; }

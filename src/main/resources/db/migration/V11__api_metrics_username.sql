@@ -1,0 +1,2 @@
+ALTER TABLE api_usage_logs
+    ADD COLUMN IF NOT EXISTS username VARCHAR(100);

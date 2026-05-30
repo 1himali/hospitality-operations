@@ -6,7 +6,7 @@
    ═══════════════════════════════════════════ */
 
 const API = { rooms: '/api/v1/rooms', menu: '/api/v1/menu', auth: '/api/v1/auth', actionItems: '/api/v1/action-items', bills: '/api/v1/bills', orders: '/api/v1/orders',     tables: '/api/v1/tables',
-    inventory: '/api/v1/inventory', assistant: '/api/v1/assistant/query'
+    inventory: '/api/v1/inventory', assistant: '/api/v1/assistant/query', metrics: '/api/v1/metrics'
 };
 
 // ── Helpers ───────────────────────────────
@@ -244,7 +244,7 @@ const navHistory = [];
 let currentPage = 'home';
 
 // Pages that show the sidebar
-const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'table-mgmt', 'action-items', 'invoice-history', 'inventory', 'calculator', 'assistant']);
+const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'table-mgmt', 'action-items', 'invoice-history', 'inventory', 'calculator', 'assistant', 'api-metrics']);
 
 // Map pages → topbar titles
 const pageTitles = {
@@ -261,6 +261,7 @@ const pageTitles = {
     'inventory': 'INVENTORY',
     'calculator': 'CALCULATOR',
     'assistant': 'ASSISTANT',
+    'api-metrics': 'API METRICS',
 };
 
 // Map pages → parent pages (for back button)
@@ -277,6 +278,7 @@ const pageParent = {
     'inventory': 'home',
     'calculator': 'home',
     'assistant': 'home',
+    'api-metrics': 'home',
 };
 
 // Map pages → active sidebar item
@@ -291,6 +293,7 @@ const sidebarActive = {
     'inventory': 'inventory',
     'calculator': 'calculator',
     'assistant': 'assistant',
+    'api-metrics': 'api-metrics',
 };
 
 function navigate(page) {
@@ -338,6 +341,7 @@ function showPage(page) {
     if (page === 'inventory') loadInventory();
     if (page === 'calculator') initCalculator();
     if (page === 'assistant') initAssistant();
+    if (page === 'api-metrics') loadApiMetrics();
 
     // Restore selection card classes after page render
     setTimeout(_refreshCardClasses, 50);
@@ -2301,6 +2305,43 @@ async function generateInvoiceFromCart() {
         toast('Invoice ' + invRef + ' generated');
         selClear();
         closeBillingCart();
+    } catch (e) { /* toast shown */ }
+}
+
+// ═══════════════════════════════════════════
+//  API METRICS MODULE
+// ═══════════════════════════════════════════
+
+async function loadApiMetrics() {
+    try {
+        const [summary, endpoints] = await Promise.all([
+            api(API.metrics + '/summary'),
+            api(API.metrics + '/endpoints')
+        ]);
+
+        if (summary) {
+            document.getElementById('metrics-total').textContent = (summary.totalRequests || 0).toLocaleString();
+            document.getElementById('metrics-success').textContent = (summary.successRequests || 0).toLocaleString();
+            document.getElementById('metrics-failures').textContent = (summary.failedRequests || 0).toLocaleString();
+            const rate = summary.errorRate != null ? (summary.errorRate * 100).toFixed(2) + '%' : '0.00%';
+            document.getElementById('metrics-error-rate').textContent = rate;
+        }
+
+        const tbody = document.getElementById('metrics-endpoints-tbody');
+        if (tbody && endpoints) {
+            if (!endpoints.length) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted)">No data yet. Start using the API to see metrics.</td></tr>';
+            } else {
+                tbody.innerHTML = endpoints.map(e => `
+                    <tr>
+                        <td style="font-weight:700">${e.endpoint}</td>
+                        <td style="text-align:right">${e.count}</td>
+                        <td style="text-align:right">${e.avgDurationMs}ms</td>
+                        <td style="text-align:right">${e.failures}</td>
+                    </tr>
+                `).join('');
+            }
+        }
     } catch (e) { /* toast shown */ }
 }
 
