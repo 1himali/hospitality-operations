@@ -6,7 +6,8 @@
    ═══════════════════════════════════════════ */
 
 const API = { rooms: '/api/v1/rooms', menu: '/api/v1/menu', auth: '/api/v1/auth', actionItems: '/api/v1/action-items', bills: '/api/v1/bills', orders: '/api/v1/orders',     tables: '/api/v1/tables',
-    inventory: '/api/v1/inventory', assistant: '/api/v1/assistant/query', metrics: '/api/v1/metrics'
+    inventory: '/api/v1/inventory', assistant: '/api/v1/assistant/query', metrics: '/api/v1/metrics', mockMode: '/api/v1/admin/mock-mode', analytics: '/api/v1/admin/analytics',
+    userMgmt: '/api/v1/admin/users', payroll: '/api/v1/admin/payroll'
 };
 
 // ── Helpers ───────────────────────────────
@@ -123,6 +124,7 @@ function _refreshCardClasses() {
 
 // ── AUTH STATE ─────────────────────────────
 let authToken = localStorage.getItem('authToken') || null;
+let userRole = localStorage.getItem('userRole') || null;
 let isAuthenticated = !!authToken;
 
 // ── API ───────────────────────────────────
@@ -210,14 +212,17 @@ document.getElementById('login-form')?.addEventListener('submit', async e => {
         
         const data = await response.json();
         authToken = data.token;
+        userRole = data.role || null;
         isAuthenticated = true;
         localStorage.setItem('authToken', authToken);
-        
+        if (userRole) localStorage.setItem('userRole', userRole);
+
         toast('Login successful');
         const form = document.getElementById('login-form');
         if (form) form.reset();
         showAppPage();
         showPage('home');
+        updateSidebarVisibility();
     } catch (err) {
         if (errorEl) {
             errorEl.textContent = err.message;
@@ -229,8 +234,10 @@ document.getElementById('login-form')?.addEventListener('submit', async e => {
 // Logout button
 document.getElementById('btn-logout')?.addEventListener('click', () => {
     authToken = null;
+    userRole = null;
     isAuthenticated = false;
     localStorage.removeItem('authToken');
+    localStorage.removeItem('userRole');
     const form = document.getElementById('login-form');
     if (form) form.reset();
     showLoginPage();
@@ -244,7 +251,7 @@ const navHistory = [];
 let currentPage = 'home';
 
 // Pages that show the sidebar
-const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'table-mgmt', 'action-items', 'invoice-history', 'inventory', 'calculator', 'assistant', 'api-metrics']);
+const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'table-mgmt', 'action-items', 'invoice-history', 'inventory', 'calculator', 'assistant', 'api-metrics', 'mock-mode', 'analytics', 'user-mgmt', 'payroll']);
 
 // Map pages → topbar titles
 const pageTitles = {
@@ -262,6 +269,10 @@ const pageTitles = {
     'calculator': 'CALCULATOR',
     'assistant': 'ASSISTANT',
     'api-metrics': 'API METRICS',
+    'mock-mode': 'MOCK MODE',
+    'analytics': 'ANALYTICS',
+    'user-mgmt': 'USER MANAGEMENT',
+    'payroll': 'PAYROLL MANAGER',
 };
 
 // Map pages → parent pages (for back button)
@@ -279,6 +290,10 @@ const pageParent = {
     'calculator': 'home',
     'assistant': 'home',
     'api-metrics': 'home',
+    'mock-mode': 'home',
+    'analytics': 'home',
+    'user-mgmt': 'home',
+    'payroll': 'home',
 };
 
 // Map pages → active sidebar item
@@ -294,7 +309,26 @@ const sidebarActive = {
     'calculator': 'calculator',
     'assistant': 'assistant',
     'api-metrics': 'api-metrics',
+    'mock-mode': 'mock-mode',
+    'analytics': 'analytics',
+    'user-mgmt': 'user-mgmt',
+    'payroll': 'payroll',
 };
+
+function isOwner() {
+    return userRole === 'ROLE_OWNER';
+}
+
+function updateSidebarVisibility() {
+    const userMgmtBtn = document.getElementById('sidebar-user-mgmt');
+    const payrollBtn = document.getElementById('sidebar-payroll');
+    if (userMgmtBtn) {
+        userMgmtBtn.style.display = isAdminOrOwner() ? '' : 'none';
+    }
+    if (payrollBtn) {
+        payrollBtn.style.display = isOwner() ? '' : 'none';
+    }
+}
 
 function navigate(page) {
     if (page === currentPage) return;
@@ -322,6 +356,7 @@ function showPage(page) {
     const sidebar = $('#sidebar');
     if (sidebarPages.has(page)) {
         sidebar.classList.remove('hidden');
+        updateSidebarVisibility();
         // Update active item
         $$('.sidebar-item').forEach(si => {
             si.classList.toggle('active', si.dataset.target === sidebarActive[page]);
@@ -342,6 +377,10 @@ function showPage(page) {
     if (page === 'calculator') initCalculator();
     if (page === 'assistant') initAssistant();
     if (page === 'api-metrics') loadApiMetrics();
+    if (page === 'mock-mode') loadMockModePage();
+    if (page === 'analytics') loadAnalytics();
+    if (page === 'user-mgmt') loadUserMgmt();
+    if (page === 'payroll') loadPayroll();
 
     // Restore selection card classes after page render
     setTimeout(_refreshCardClasses, 50);
@@ -799,6 +838,14 @@ $('#btn-confirm-delete').addEventListener('click', async () => {
             await api(`${API.inventory}/${id}`, { method: 'DELETE' });
             toast('Inventory item deleted');
             loadInventory();
+        } else if (type === 'user') {
+            await api(`${API.userMgmt}/${id}`, { method: 'DELETE' });
+            toast('User deleted');
+            loadUserMgmt();
+        } else if (type === 'payroll') {
+            await api(`${API.payroll}/${id}`, { method: 'DELETE' });
+            toast('Employee deleted');
+            loadPayroll();
         }
     } catch (e) { /* toast shown */ }
     closeModal('delete-modal');
@@ -2345,7 +2392,388 @@ async function loadApiMetrics() {
     } catch (e) { /* toast shown */ }
 }
 
+async function downloadMetricsExport(format) {
+    try {
+        const url = `${API.metrics}/export/${format}`;
+        const response = await fetch(url, {
+            headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        if (!response.ok) { toast('Export failed', 'error'); return; }
+        const blob = await response.blob();
+        const dlUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = dlUrl;
+        a.download = `api_metrics.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(dlUrl);
+        toast('Metrics exported as ' + format.toUpperCase());
+    } catch (e) { toast('Export failed', 'error'); }
+}
+
+document.getElementById('btn-export-metrics-csv')?.addEventListener('click', () => downloadMetricsExport('csv'));
+document.getElementById('btn-export-metrics-json')?.addEventListener('click', () => downloadMetricsExport('json'));
+
 // ═══════════════════════════════════════════
-//  INIT — navigation init is handled in the
-//  DOMContentLoaded callback above
+//  ANALYTICS MODULE
 // ═══════════════════════════════════════════
+
+async function loadAnalytics() {
+    try {
+        const data = await api(API.analytics);
+        if (!data) return;
+
+        // Revenue
+        if (data.revenue) {
+            document.getElementById('rev-total').textContent = fmt(data.revenue.totalRevenue);
+            document.getElementById('rev-paid').textContent = fmt(data.revenue.paidRevenue);
+            document.getElementById('rev-unpaid').textContent = fmt(data.revenue.unpaidRevenue);
+            document.getElementById('rev-avg').textContent = fmt(data.revenue.averageOrderValue);
+        }
+
+        // Invoices
+        if (data.invoices) {
+            document.getElementById('inv-total').textContent = data.invoices.totalInvoices;
+            document.getElementById('inv-paid').textContent = data.invoices.paidInvoices;
+            document.getElementById('inv-unpaid').textContent = data.invoices.unpaidInvoices;
+            document.getElementById('inv-cancelled').textContent = data.invoices.cancelledInvoices;
+        }
+
+        // Rooms
+        if (data.rooms) {
+            document.getElementById('room-total').textContent = data.rooms.totalRooms;
+            document.getElementById('room-occupied').textContent = data.rooms.occupiedRooms;
+            document.getElementById('room-vacant').textContent = data.rooms.vacantRooms;
+            document.getElementById('room-rate').textContent = (data.rooms.occupancyRate * 100).toFixed(1) + '%';
+        }
+
+        // Tables
+        if (data.tables) {
+            document.getElementById('table-total').textContent = data.tables.totalTables;
+            document.getElementById('table-available').textContent = data.tables.availableTables;
+            document.getElementById('table-occupied').textContent = data.tables.occupiedTables;
+            document.getElementById('table-util').textContent = (data.tables.utilizationRate * 100).toFixed(1) + '%';
+        }
+
+        // Billing
+        if (data.billing) {
+            document.getElementById('bill-total').textContent = data.billing.totalBills;
+            document.getElementById('bill-tax').textContent = fmt(data.billing.totalTaxCollected);
+            document.getElementById('bill-discount').textContent = fmt(data.billing.totalDiscountsGiven);
+            document.getElementById('bill-avg').textContent = fmt(data.billing.averageBillAmount);
+        }
+
+        // Inventory
+        if (data.inventory) {
+            document.getElementById('inv-total-items').textContent = data.inventory.totalItems;
+            document.getElementById('inv-instock').textContent = data.inventory.inStockItems;
+            document.getElementById('inv-lowstock').textContent = data.inventory.lowStockItems;
+            document.getElementById('inv-reorder').textContent = data.inventory.itemsBelowReorderLevel;
+        }
+    } catch (e) { /* toast shown */ }
+}
+
+// ═══════════════════════════════════════════
+//  USER MANAGEMENT MODULE (Admin/Owner)
+// ═══════════════════════════════════════════
+
+let usersData = [];
+
+async function loadUserMgmt() {
+    if (!isAdminOrOwner()) {
+        document.getElementById('user-mgmt-grid').innerHTML = '<div class="empty-state"><p>Access denied.</p></div>';
+        return;
+    }
+    try {
+        usersData = await api(API.userMgmt);
+        renderUserMgmt();
+    } catch (e) { /* toast shown */ }
+}
+
+function renderUserMgmt() {
+    const grid = document.getElementById('user-mgmt-grid');
+    if (!grid) return;
+    if (!usersData.length) {
+        grid.innerHTML = '<div class="empty-state"><p>No users found.</p></div>';
+        return;
+    }
+    grid.innerHTML = usersData.map(u => `
+        <div class="room-card">
+            <div class="room-card-header">
+                <span class="room-card-id">${u.username}</span>
+                <span class="badge badge-outlined">${u.role}</span>
+            </div>
+            <div class="room-card-body">
+                <div class="room-card-row"><span class="room-card-label">ID:</span><span class="room-card-value">${u.id}</span></div>
+                <div class="room-card-row"><span class="room-card-label">SCHEMA:</span><span class="room-card-value">${u.tenantSchema}</span></div>
+                <div class="room-card-row"><span class="room-card-label">CREATED:</span><span class="room-card-value">${fmtDate(u.createdAt)}</span></div>
+            </div>
+            <div class="room-card-actions" style="margin-top:12px;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
+                <button class="btn btn-outline btn-sm" onclick="openResetPwModal(${u.id},'${u.username.replace(/'/g,"\\'")}')">RESET PASSWORD</button>
+                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="confirmDeleteUser(${u.id},'${u.username.replace(/'/g,"\\'")}')">DELETE</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+window.openResetPwModal = function(userId, username) {
+    document.getElementById('reset-pw-user-id').value = userId;
+    document.getElementById('reset-pw-value').value = '';
+    document.getElementById('reset-pw-modal').querySelector('.modal-title').textContent = 'RESET PASSWORD — ' + username;
+    openModal('reset-pw-modal');
+};
+
+window.confirmDeleteUser = function(userId, username) {
+    pendingDelete = { type: 'user', id: userId };
+    document.getElementById('delete-msg').textContent = 'Delete user "' + username + '"? This cannot be undone.';
+    openModal('delete-modal');
+};
+
+// Add user button
+document.getElementById('btn-add-user')?.addEventListener('click', function() {
+    document.getElementById('user-modal-title').textContent = 'ADD USER';
+    document.getElementById('user-submit-btn').textContent = 'CREATE';
+    document.getElementById('user-form').reset();
+    document.getElementById('user-edit-id').value = '';
+    openModal('user-modal');
+});
+
+// User form submit
+document.getElementById('user-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const body = {
+        username: document.getElementById('user-username').value.trim(),
+        password: document.getElementById('user-password').value,
+        role: document.getElementById('user-role').value,
+    };
+    try {
+        await api(API.userMgmt, { method: 'POST', body: JSON.stringify(body) });
+        toast('User created');
+        closeModal('user-modal');
+        loadUserMgmt();
+    } catch (e) { /* toast shown */ }
+});
+
+// Reset password form submit
+document.getElementById('reset-pw-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const userId = document.getElementById('reset-pw-user-id').value;
+    const password = document.getElementById('reset-pw-value').value;
+    try {
+        await api(`${API.userMgmt}/${userId}/reset-password`, {
+            method: 'PUT',
+            body: JSON.stringify({ password })
+        });
+        toast('Password reset successful');
+        closeModal('reset-pw-modal');
+    } catch (e) { /* toast shown */ }
+});
+
+// ═══════════════════════════════════════════
+//  PAYROLL MODULE (Owner only)
+// ═══════════════════════════════════════════
+
+let employeesData = [];
+
+async function loadPayroll() {
+    if (!isOwner()) {
+        document.getElementById('payroll-grid').innerHTML = '<div class="empty-state"><p>Access denied. Owner role required.</p></div>';
+        return;
+    }
+    try {
+        employeesData = await api(API.payroll);
+        renderPayroll();
+    } catch (e) { /* toast shown */ }
+}
+
+function renderPayroll() {
+    const grid = document.getElementById('payroll-grid');
+    if (!grid) return;
+    if (!employeesData.length) {
+        grid.innerHTML = '<div class="empty-state"><p>No employees found. Add your first employee.</p></div>';
+        return;
+    }
+    grid.innerHTML = employeesData.map(emp => `
+        <div class="room-card">
+            <div class="room-card-header">
+                <span class="room-card-id">${emp.name}</span>
+                <span class="badge ${emp.status === 'ACTIVE' ? 'badge-filled' : 'badge-outlined'}">${emp.status}</span>
+            </div>
+            <div class="room-card-body">
+                <div class="room-card-row"><span class="room-card-label">POSITION:</span><span class="room-card-value">${emp.position}</span></div>
+                <div class="room-card-row"><span class="room-card-label">DEPARTMENT:</span><span class="room-card-value">${emp.department}</span></div>
+                <div class="room-card-row"><span class="room-card-label">SALARY:</span><span class="room-card-value">${fmt(emp.salary)}</span></div>
+                ${emp.phone ? `<div class="room-card-row"><span class="room-card-label">PHONE:</span><span class="room-card-value">${emp.phone}</span></div>` : ''}
+                ${emp.email ? `<div class="room-card-row"><span class="room-card-label">EMAIL:</span><span class="room-card-value">${emp.email}</span></div>` : ''}
+            </div>
+            <div class="room-card-actions" style="margin-top:12px;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
+                <button class="btn btn-outline btn-sm" onclick="editEmployee(${emp.id})">EDIT</button>
+                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="confirmDeleteEmployee(${emp.id},'${emp.name.replace(/'/g,"\\'")}')">DELETE</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+window.editEmployee = async function(id) {
+    const emp = employeesData.find(e => e.id === id);
+    if (!emp) return;
+    document.getElementById('employee-modal-title').textContent = 'EDIT EMPLOYEE';
+    document.getElementById('employee-submit-btn').textContent = 'UPDATE';
+    document.getElementById('employee-edit-id').value = id;
+    document.getElementById('emp-name').value = emp.name;
+    document.getElementById('emp-position').value = emp.position;
+    document.getElementById('emp-department').value = emp.department;
+    document.getElementById('emp-salary').value = emp.salary;
+    document.getElementById('emp-phone').value = emp.phone || '';
+    document.getElementById('emp-email').value = emp.email || '';
+    openModal('employee-modal');
+};
+
+window.confirmDeleteEmployee = function(id, name) {
+    pendingDelete = { type: 'payroll', id };
+    document.getElementById('delete-msg').textContent = 'Delete employee "' + name + '"? This cannot be undone.';
+    openModal('delete-modal');
+};
+
+// Add employee button
+document.getElementById('btn-add-employee')?.addEventListener('click', function() {
+    document.getElementById('employee-modal-title').textContent = 'ADD EMPLOYEE';
+    document.getElementById('employee-submit-btn').textContent = 'SAVE';
+    document.getElementById('employee-form').reset();
+    document.getElementById('employee-edit-id').value = '';
+    document.getElementById('emp-salary').value = '30000';
+    openModal('employee-modal');
+});
+
+// Employee form submit
+document.getElementById('employee-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const editId = document.getElementById('employee-edit-id').value;
+    const body = {
+        name: document.getElementById('emp-name').value.trim(),
+        position: document.getElementById('emp-position').value.trim(),
+        department: document.getElementById('emp-department').value,
+        salary: parseFloat(document.getElementById('emp-salary').value),
+        phone: document.getElementById('emp-phone').value.trim() || null,
+        email: document.getElementById('emp-email').value.trim() || null,
+    };
+    try {
+        if (editId) {
+            await api(`${API.payroll}/${editId}`, { method: 'PUT', body: JSON.stringify(body) });
+            toast('Employee updated');
+        } else {
+            await api(API.payroll, { method: 'POST', body: JSON.stringify(body) });
+            toast('Employee created');
+        }
+        closeModal('employee-modal');
+        loadPayroll();
+    } catch (e) { /* toast shown */ }
+});
+
+// Export payroll CSV
+document.getElementById('btn-export-payroll')?.addEventListener('click', async function() {
+    try {
+        const response = await fetch(API.payroll + '/export/csv', {
+            headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        if (!response.ok) { toast('Export failed', 'error'); return; }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'payroll_employees.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        toast('Payroll exported');
+    } catch (e) { toast('Export failed', 'error'); }
+});
+
+// ═══════════════════════════════════════════
+//  MOCK MODE MODULE
+// ═══════════════════════════════════════════
+
+function isAdminOrOwner() {
+    return userRole === 'ROLE_ADMIN' || userRole === 'ROLE_OWNER';
+}
+
+async function loadMockModePage() {
+    const controls = document.getElementById('mock-mode-controls');
+    if (controls) {
+        controls.style.display = isAdminOrOwner() ? '' : 'none';
+    }
+    await refreshMockModeStatus();
+}
+
+async function refreshMockModeStatus() {
+    try {
+        const status = await api(API.mockMode);
+        updateMockModeUI(status && status.enabled);
+    } catch (e) {
+        // Show as disabled if endpoint is not reachable
+        updateMockModeUI(false);
+    }
+}
+
+function updateMockModeUI(enabled) {
+    const indicator = document.getElementById('mock-mode-indicator');
+    const badge = document.getElementById('mock-mode-badge');
+    const enableBtn = document.getElementById('btn-mock-enable');
+    const disableBtn = document.getElementById('btn-mock-disable');
+
+    if (indicator) {
+        indicator.textContent = enabled ? 'ON' : 'OFF';
+        indicator.className = 'mock-mode-status-indicator ' + (enabled ? 'on' : 'off');
+    }
+
+    if (badge) {
+        badge.style.display = enabled ? 'inline-block' : 'none';
+    }
+
+    if (enableBtn) enableBtn.style.display = enabled ? 'none' : '';
+    if (disableBtn) disableBtn.style.display = enabled ? '' : 'none';
+}
+
+async function enableMockMode() {
+    try {
+        const r = await api(API.mockMode, {
+            method: 'POST',
+            body: JSON.stringify({ enabled: true })
+        });
+        updateMockModeUI(r && r.enabled);
+        toast('Mock mode enabled');
+    } catch (e) { /* toast shown */ }
+}
+
+async function disableMockMode() {
+    try {
+        const r = await api(API.mockMode, {
+            method: 'POST',
+            body: JSON.stringify({ enabled: false })
+        });
+        updateMockModeUI(r && r.enabled);
+        toast('Mock mode disabled');
+    } catch (e) { /* toast shown */ }
+}
+
+document.addEventListener('click', function (e) {
+    if (e.target.id === 'btn-mock-enable') enableMockMode();
+    if (e.target.id === 'btn-mock-disable') disableMockMode();
+});
+
+// Initialize mock mode badge on app startup
+(function () {
+    document.addEventListener('DOMContentLoaded', async function () {
+        if (authToken) {
+            try {
+                const status = await api(API.mockMode);
+                const badge = document.getElementById('mock-mode-badge');
+                if (badge && status && status.enabled) {
+                    badge.style.display = 'inline-block';
+                }
+            } catch (e) { /* badge stays hidden */ }
+        }
+    });
+})();

@@ -9,6 +9,9 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -68,5 +71,42 @@ public class ApiUsageLogService {
         }
 
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public String exportCsv() {
+        List<ApiUsageLog> allLogs = repository.findAll();
+        StringBuilder sb = new StringBuilder();
+        sb.append("ID,Endpoint,Method,Status,DurationMs,Username,CalledAt\n");
+        for (ApiUsageLog log : allLogs) {
+            sb.append(log.getId()).append(",");
+            sb.append(escapeCsv(log.getEndpoint())).append(",");
+            sb.append(log.getHttpMethod()).append(",");
+            sb.append(log.getStatusCode() != null ? log.getStatusCode() : "").append(",");
+            sb.append(log.getDurationMs() != null ? log.getDurationMs() : "").append(",");
+            sb.append(escapeCsv(log.getUsername())).append(",");
+            sb.append(log.getCalledAt() != null ? log.getCalledAt().toString() : "").append("\n");
+        }
+        return sb.toString();
+    }
+
+    @Transactional(readOnly = true)
+    public String exportJson() {
+        List<ApiUsageLog> allLogs = repository.findAll();
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(allLogs);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize API usage logs to JSON: {}", e.getMessage());
+            return "[]";
+        }
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 }

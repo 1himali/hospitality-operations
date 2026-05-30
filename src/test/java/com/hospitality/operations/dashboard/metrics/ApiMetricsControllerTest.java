@@ -94,4 +94,32 @@ class ApiMetricsControllerTest {
                 .andExpect(jsonPath("$[0].endpoint").value("/api/v1/rooms"))
                 .andExpect(jsonPath("$[0].count").value(50));
     }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testExportCsv() throws Exception {
+        when(apiUsageLogService.exportCsv()).thenReturn("ID,Endpoint\n1,/api/v1/rooms\n");
+
+        mockMvc.perform(get("/api/v1/metrics/export/csv")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "OWNER")
+    void testExportJson() throws Exception {
+        when(apiUsageLogService.exportJson()).thenReturn("[{\"id\":1,\"endpoint\":\"/api/v1/rooms\"}]");
+
+        mockMvc.perform(get("/api/v1/metrics/export/json")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void testExportForbiddenForUser() throws Exception {
+        mockMvc.perform(get("/api/v1/metrics/export/csv")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
 }

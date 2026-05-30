@@ -32,10 +32,33 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/", "/index.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
-                        // Metrics endpoints — Admin / Owner only
+
+                        // ── PAYROLL — Owner only ──
+                        .requestMatchers("/api/v1/admin/payroll/**").hasRole("OWNER")
+
+                        // ── USER MANAGEMENT — Admin / Owner only ──
+                        .requestMatchers("/api/v1/admin/users/**").hasAnyRole("ADMIN", "OWNER")
+
+                        // ── SYSTEM CONFIG — Owner only ──
+                        .requestMatchers("/api/v1/admin/config/**").hasRole("OWNER")
+
+                        // ── MOCK MODE — Admin / Owner only ──
+                        .requestMatchers("/api/v1/admin/mock-mode/**").hasAnyRole("ADMIN", "OWNER")
+
+                        // ── ANALYTICS — Admin / Owner only ──
+                        .requestMatchers("/api/v1/admin/analytics/**").hasAnyRole("ADMIN", "OWNER")
+
+                        // ── API METRICS (including export) — Admin / Owner only ──
                         .requestMatchers("/api/v1/metrics/**").hasAnyRole("ADMIN", "OWNER")
-                        // All other API requests require authentication
-                        .anyRequest().permitAll()
+
+                        // ── ASSISTANT ADMIN — Admin / Owner only (enable/disable) ──
+                        .requestMatchers("/api/v1/assistant/admin/**").hasAnyRole("ADMIN", "OWNER")
+
+                        // ── All other API paths — any authenticated user ──
+                        .requestMatchers("/api/v1/**").authenticated()
+
+                        // ── Catch-all ──
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

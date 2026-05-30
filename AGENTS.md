@@ -16,17 +16,48 @@ You are working on an existing Spring Boot 3.5.14 + Java 21 + Maven project call
 
 ## Current backlog
 
-1. Stabilize Order Management.
-2. Build Billing workflows.
-3. Replace the old Reports module with Invoice History.
-4. Add a new Inventory Management module for Lodging and Restaurant.
-5. Implement Reservation and Table workflows.
-6. Build a project-aware AI Assistant.
-7. Update Rooms search maintenance status workflow.
-8. Enforce a consistent light-theme UI and reliable selection behavior across the app.
-9. Add API usage logging / metrics.
-10. Add third-party mock integration.
-11. Add Analytics.
+✅ All 11 backlog items are complete.
+
+| # | Module | Status |
+|---|--------|--------|
+| 1 | Stabilize Order Management | ✅ Complete |
+| 2 | Build Billing workflows | ✅ Complete |
+| 3 | Replace old Reports with Invoice History | ✅ Complete |
+| 4 | Inventory Management (Lodging & Restaurant) | ✅ Complete |
+| 5 | Reservation and Table workflows | ✅ Complete |
+| 6 | Project-aware AI Assistant | ✅ Complete |
+| 7 | Rooms search maintenance status cleanup | ✅ Complete |
+| 8 | Light-theme UI + selection behavior | ✅ Complete |
+| 9 | API usage logging / metrics | ✅ Complete |
+| 10 | Third-party mock integration | ✅ Complete |
+| 11 | Analytics views | ✅ Complete |
+
+## RBAC Enhancements
+
+Three-role system implemented:
+
+| Role | Credentials | Access |
+|------|-------------|--------|
+| **User** | `user` / `user` | Basic app workflows (rooms, menu, orders, tables, billing, inventory, action items, assistant, calculator, invoice history) |
+| **Admin** | `admin` / `abcd` | User + Invoice Management, User CRUD, password resets, Analytics, API Metrics (incl. CSV/JSON export), Mock Mode toggle, Assistant enable/disable. **Restricted from Payroll.** |
+| **Owner** | `owner` / `4321` | Full access including Payroll Manager CRUD, Payroll CSV export, System Configuration |
+
+### Backend changes
+- **SecurityConfig** — Complete role-based endpoint rules: `ROLE_OWNER` for payroll, `ROLE_ADMIN`+`ROLE_OWNER` for user mgmt, metrics, mock mode, analytics, assistant admin; `ROLE_USER`+ for all other API
+- **DataInitializer** — Updated `admin` password to `abcd`, added `owner`/`4321` seed
+- **V12 migration** — `payroll_employees` table
+- **PayrollEmployee** entity, repository, service, controller (`/api/v1/admin/payroll/**`) — Owner-only CRUD + CSV export
+- **UserManagementController** (`/api/v1/admin/users/**`) — Admin/Owner: list, create, password reset
+- **ApiMetricsController** — Added `/export/csv` and `/export/json` endpoints (Admin/Owner)
+- **ApiUsageLogService** — Added `exportCsv()` and `exportJson()` methods
+
+### Frontend changes
+- **Sidebar** — "USER MGMT" visible to Admin/Owner, "PAYROLL" visible to Owner only (hidden for others)
+- **User Management page** — list users, add user, reset password, delete user
+- **Payroll page** — list employees (Owner only), add/edit/delete, CSV export download
+- **API Metrics page** — added Export CSV/JSON buttons that download via browser flow
+- **`isOwner()`** and **`updateSidebarVisibility()`** functions
+- **CSS** — no new styles needed (reuses existing `room-card` patterns)
 
 ## Product requirements
 

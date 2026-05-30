@@ -20,6 +20,7 @@
         </button>
         <h1 class="topbar-title" id="topbar-title">MANAGEMENT SYSTEM</h1>
         <div class="topbar-actions">
+            <span class="mock-mode-badge" id="mock-mode-badge" style="display:none">MOCK</span>
             <button class="topbar-btn" id="btn-logout" title="Logout" style="background:#c0392b;color:#ffffff;border-radius:4px;">LOGOUT</button>
         </div>
     </header>
@@ -91,6 +92,22 @@
                 <button class="sidebar-item" data-target="api-metrics">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20V14"/></svg>
                     API METRICS
+                </button>
+                <button class="sidebar-item" data-target="mock-mode">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="2" width="20" height="20" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>
+                    MOCK MODE
+                </button>
+                <button class="sidebar-item" data-target="analytics">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    ANALYTICS
+                </button>
+                <button class="sidebar-item" data-target="user-mgmt" id="sidebar-user-mgmt" style="display:none">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    USER MGMT
+                </button>
+                <button class="sidebar-item" data-target="payroll" id="sidebar-payroll" style="display:none">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="8" width="20" height="12" rx="2"/><path d="M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M8 6V4h8v2"/></svg>
+                    PAYROLL
                 </button>
             </nav>
         </aside>
@@ -602,6 +619,10 @@
                 <div class="page-main" style="max-width:900px;margin:0 auto;width:100%">
                     <div class="page-toolbar">
                         <h2 class="page-heading" style="margin:0">API METRICS</h2>
+                        <div class="page-toolbar-actions">
+                            <button class="btn btn-outline btn-sm" id="btn-export-metrics-csv">EXPORT CSV</button>
+                            <button class="btn btn-outline btn-sm" id="btn-export-metrics-json">EXPORT JSON</button>
+                        </div>
                     </div>
                     <div class="metrics-summary" id="metrics-summary">
                         <div class="metrics-card"><div class="metrics-card-value" id="metrics-total">—</div><div class="metrics-card-label">TOTAL REQUESTS</div></div>
@@ -623,6 +644,132 @@
                             <tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted)">Loading metrics...</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- ═══ PAGE: MOCK MODE ═══ -->
+            <section class="page" id="page-mock-mode">
+                <div class="page-main" style="max-width:700px;margin:0 auto;width:100%">
+                    <div class="page-toolbar">
+                        <h2 class="page-heading" style="margin:0">MOCK MODE</h2>
+                    </div>
+                    <div class="mock-mode-status" id="mock-mode-status">
+                        <div class="mock-mode-card" id="mock-mode-card">
+                            <div class="mock-mode-status-indicator" id="mock-mode-indicator">OFF</div>
+                            <div class="mock-mode-status-label">CURRENT STATUS</div>
+                        </div>
+                        <div class="mock-mode-controls" id="mock-mode-controls">
+                            <button class="btn btn-primary" id="btn-mock-enable">ENABLE MOCK MODE</button>
+                            <button class="btn btn-danger" id="btn-mock-disable" style="display:none">DISABLE MOCK MODE</button>
+                        </div>
+                        <div class="mock-mode-info">
+                            <h3>What is Mock Mode?</h3>
+                            <p>Mock mode replaces third-party service integrations with simulated responses, allowing testing and development without external dependencies.</p>
+                            <p>When enabled:</p>
+                            <ul>
+                                <li>Third-party order listings return sample data</li>
+                                <li>Orders are processed locally with mock confirmations</li>
+                                <li>No external network calls are made</li>
+                            </ul>
+                            <p><strong>Note:</strong> Mock mode controls are restricted to Admin and Owner roles.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ PAGE: ANALYTICS ═══ -->
+            <section class="page" id="page-analytics">
+                <div class="page-main" style="max-width:1000px;margin:0 auto;width:100%">
+                    <div class="page-toolbar">
+                        <h2 class="page-heading" style="margin:0">ANALYTICS</h2>
+                    </div>
+                    <div id="analytics-content">
+                        <div class="analytics-section">
+                            <h3 class="analytics-section-title">REVENUE</h3>
+                            <div class="analytics-grid" id="analytics-revenue">
+                                <div class="analytics-card"><div class="analytics-value" id="rev-total">—</div><div class="analytics-label">TOTAL REVENUE</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="rev-paid">—</div><div class="analytics-label">PAID REVENUE</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="rev-unpaid">—</div><div class="analytics-label">UNPAID REVENUE</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="rev-avg">—</div><div class="analytics-label">AVG ORDER VALUE</div></div>
+                            </div>
+                        </div>
+                        <div class="analytics-section">
+                            <h3 class="analytics-section-title">INVOICES</h3>
+                            <div class="analytics-grid" id="analytics-invoices">
+                                <div class="analytics-card"><div class="analytics-value" id="inv-total">—</div><div class="analytics-label">TOTAL INVOICES</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="inv-paid">—</div><div class="analytics-label">PAID</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="inv-unpaid">—</div><div class="analytics-label">UNPAID</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="inv-cancelled">—</div><div class="analytics-label">CANCELLED</div></div>
+                            </div>
+                        </div>
+                        <div class="analytics-section">
+                            <h3 class="analytics-section-title">ROOMS</h3>
+                            <div class="analytics-grid" id="analytics-rooms">
+                                <div class="analytics-card"><div class="analytics-value" id="room-total">—</div><div class="analytics-label">TOTAL ROOMS</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="room-occupied">—</div><div class="analytics-label">OCCUPIED</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="room-vacant">—</div><div class="analytics-label">VACANT</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="room-rate">—</div><div class="analytics-label">OCCUPANCY RATE</div></div>
+                            </div>
+                        </div>
+                        <div class="analytics-section">
+                            <h3 class="analytics-section-title">DINING TABLES</h3>
+                            <div class="analytics-grid" id="analytics-tables">
+                                <div class="analytics-card"><div class="analytics-value" id="table-total">—</div><div class="analytics-label">TOTAL TABLES</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="table-available">—</div><div class="analytics-label">AVAILABLE</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="table-occupied">—</div><div class="analytics-label">OCCUPIED</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="table-util">—</div><div class="analytics-label">UTILIZATION RATE</div></div>
+                            </div>
+                        </div>
+                        <div class="analytics-section">
+                            <h3 class="analytics-section-title">BILLING</h3>
+                            <div class="analytics-grid" id="analytics-billing">
+                                <div class="analytics-card"><div class="analytics-value" id="bill-total">—</div><div class="analytics-label">TOTAL BILLS</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="bill-tax">—</div><div class="analytics-label">TAX COLLECTED</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="bill-discount">—</div><div class="analytics-label">DISCOUNTS</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="bill-avg">—</div><div class="analytics-label">AVG BILL AMOUNT</div></div>
+                            </div>
+                        </div>
+                        <div class="analytics-section">
+                            <h3 class="analytics-section-title">INVENTORY</h3>
+                            <div class="analytics-grid" id="analytics-inventory">
+                                <div class="analytics-card"><div class="analytics-value" id="inv-total-items">—</div><div class="analytics-label">TOTAL ITEMS</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="inv-instock">—</div><div class="analytics-label">IN STOCK</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="inv-lowstock">—</div><div class="analytics-label">LOW STOCK</div></div>
+                                <div class="analytics-card"><div class="analytics-value" id="inv-reorder">—</div><div class="analytics-label">BELOW REORDER</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ PAGE: USER MGMT ═══ -->
+            <section class="page" id="page-user-mgmt">
+                <div class="page-main" style="max-width:900px;margin:0 auto;width:100%">
+                    <div class="page-toolbar">
+                        <h2 class="page-heading" style="margin:0">USER MANAGEMENT</h2>
+                        <div class="page-toolbar-actions">
+                            <button class="btn btn-primary" id="btn-add-user">+ ADD USER</button>
+                        </div>
+                    </div>
+                    <div class="card-grid" id="user-mgmt-grid">
+                        <div class="loading-state">Loading users...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ PAGE: PAYROLL ═══ -->
+            <section class="page" id="page-payroll">
+                <div class="page-main" style="max-width:900px;margin:0 auto;width:100%">
+                    <div class="page-toolbar">
+                        <h2 class="page-heading" style="margin:0">PAYROLL MANAGER</h2>
+                        <div class="page-toolbar-actions">
+                            <button class="btn btn-primary" id="btn-add-employee">+ ADD EMPLOYEE</button>
+                            <button class="btn btn-outline" id="btn-export-payroll">EXPORT CSV</button>
+                        </div>
+                    </div>
+                    <div class="card-grid" id="payroll-grid">
+                        <div class="loading-state">Loading employees...</div>
+                    </div>
                 </div>
             </section>
 
@@ -933,6 +1080,94 @@
                 <button class="btn btn-outline" onclick="closeModal('delete-modal')">CANCEL</button>
                 <button class="btn btn-danger" id="btn-confirm-delete">DELETE</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         MODAL: User Form
+         ══════════════════════════════════════ -->
+    <div class="modal-overlay" id="user-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="user-modal-title">ADD USER</h2>
+                <button class="modal-close" onclick="closeModal('user-modal')">&times;</button>
+            </div>
+            <form id="user-form" class="modal-form">
+                <input type="hidden" id="user-edit-id">
+                <div class="form-group"><label>USERNAME *</label><input type="text" id="user-username" maxlength="100" required placeholder="newuser"></div>
+                <div class="form-group"><label>PASSWORD *</label><input type="password" id="user-password" minlength="4" required placeholder="At least 4 characters"></div>
+                <div class="form-group"><label>ROLE *</label>
+                    <select id="user-role" required>
+                        <option value="ROLE_USER">USER</option>
+                        <option value="ROLE_ADMIN">ADMIN</option>
+                        <option value="ROLE_OWNER">OWNER</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('user-modal')">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" id="user-submit-btn">SAVE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         MODAL: Employee Form
+         ══════════════════════════════════════ -->
+    <div class="modal-overlay" id="employee-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="employee-modal-title">ADD EMPLOYEE</h2>
+                <button class="modal-close" onclick="closeModal('employee-modal')">&times;</button>
+            </div>
+            <form id="employee-form" class="modal-form">
+                <input type="hidden" id="employee-edit-id">
+                <div class="form-row">
+                    <div class="form-group"><label>NAME *</label><input type="text" id="emp-name" maxlength="200" required placeholder="John Doe"></div>
+                    <div class="form-group"><label>POSITION *</label><input type="text" id="emp-position" maxlength="100" required placeholder="Chef"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>DEPARTMENT *</label>
+                        <select id="emp-department" required>
+                            <option value="KITCHEN">KITCHEN</option>
+                            <option value="SERVICE">SERVICE</option>
+                            <option value="HOUSEKEEPING">HOUSEKEEPING</option>
+                            <option value="MANAGEMENT">MANAGEMENT</option>
+                            <option value="MAINTENANCE">MAINTENANCE</option>
+                            <option value="OTHER">OTHER</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>SALARY *</label><input type="number" id="emp-salary" min="0" step="0.01" required placeholder="50000"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>PHONE</label><input type="text" id="emp-phone" maxlength="20" placeholder="+91 9876543210"></div>
+                    <div class="form-group"><label>EMAIL</label><input type="email" id="emp-email" maxlength="200" placeholder="john@example.com"></div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('employee-modal')">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" id="employee-submit-btn">SAVE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         MODAL: Password Reset
+         ══════════════════════════════════════ -->
+    <div class="modal-overlay" id="reset-pw-modal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h2 class="modal-title">RESET PASSWORD</h2>
+                <button class="modal-close" onclick="closeModal('reset-pw-modal')">&times;</button>
+            </div>
+            <form id="reset-pw-form" class="modal-form">
+                <input type="hidden" id="reset-pw-user-id">
+                <div class="form-group"><label>NEW PASSWORD *</label><input type="password" id="reset-pw-value" minlength="4" required placeholder="At least 4 characters"></div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('reset-pw-modal')">CANCEL</button>
+                    <button type="submit" class="btn btn-primary">RESET</button>
+                </div>
+            </form>
         </div>
     </div>
 
