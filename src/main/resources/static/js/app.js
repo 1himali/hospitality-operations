@@ -185,6 +185,7 @@ function showAppPage() {
             showAppPage();
             showPage('home');
             updateLogoutButton();
+            updateToolbarVisibility();
         } else {
             showLoginPage();
         }
@@ -231,6 +232,7 @@ document.getElementById('login-form')?.addEventListener('submit', async e => {
         showPage('home');
         updateSidebarVisibility();
         updateLogoutButton();
+        updateToolbarVisibility();
     } catch (err) {
         if (errorEl) {
             errorEl.textContent = err.message;
@@ -344,12 +346,21 @@ function isOwner() {
     return userRole === 'ROLE_OWNER';
 }
 
+function isAdmin() {
+    return userRole === 'ROLE_ADMIN';
+}
+
 function updateSidebarVisibility() {
     const adminOwner = isAdminOrOwner();
     const ownerOnly = isOwner();
+    const adminOnly = isAdmin();
+    const adminOwnerOrManager = isAdminOrOwnerOrManager();
     const items = [
-        { id: 'sidebar-user-mgmt', show: adminOwner },
-        { id: 'sidebar-payroll', show: ownerOnly },
+        { id: 'sidebar-action-items', show: adminOwnerOrManager },
+        { id: 'sidebar-inventory', show: adminOwnerOrManager },
+        { id: 'sidebar-invoice-history', show: adminOwnerOrManager },
+        { id: 'sidebar-user-mgmt', show: adminOnly },
+        { id: 'sidebar-payroll', show: adminOwner },
         { id: 'sidebar-api-metrics', show: adminOwner },
         { id: 'sidebar-mock-mode', show: adminOwner },
         { id: 'sidebar-analytics', show: adminOwner },
@@ -427,6 +438,15 @@ function showPage(page) {
     // Restore selection card classes after page render
     setTimeout(_refreshCardClasses, 50);
     _refreshFab();
+    updateToolbarVisibility();
+}
+
+function updateToolbarVisibility() {
+    const canWrite = isAdminOrOwner();
+    const addRoomBtn = document.getElementById('btn-add-room');
+    const addMenuItemBtn = document.getElementById('btn-add-menu-item');
+    if (addRoomBtn) addRoomBtn.style.display = canWrite ? '' : 'none';
+    if (addMenuItemBtn) addMenuItemBtn.style.display = canWrite ? '' : 'none';
 }
 
 // Back button
@@ -511,7 +531,7 @@ function renderRoomGrid() {
             <div class="room-card-image">${r.imageUrl ? `<img src="${r.imageUrl}" alt="Room ${r.roomNumber}">` : 'NO IMAGE'}</div>
             <div class="room-card-actions" style="margin-top:12px;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
                 <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editRoom(${r.id})">EDIT</button>
-                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();confirmDeleteRoom(${r.id},'${r.roomNumber}')">DELETE</button>
+                ${isAdminOrOwner() ? `<button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();confirmDeleteRoom(${r.id},'${r.roomNumber}')">DELETE</button>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -547,15 +567,51 @@ $('#btn-add-room').addEventListener('click', () => {
 window.editRoom = async function(id) {
     const r = roomsData.find(x => x.id === id);
     if (!r) return;
+    const isAdminOwner = isAdminOrOwner();
+    const rows = document.querySelectorAll('#room-form .form-row');
+    const roomNumberGroup = $('#room-number')?.closest('.form-group');
+    const roomTypeGroup = $('#room-type')?.closest('.form-group');
+    const roomFloorGroup = $('#room-floor')?.closest('.form-group');
+    const roomRateGroup = $('#room-rate')?.closest('.form-group');
+    const roomImageGroup = $('#room-image-url')?.closest('.form-group');
     $('#room-modal-title').textContent = 'EDIT ROOM';
     $('#room-submit-btn').textContent = 'UPDATE';
     $('#room-edit-id').value = r.id;
-    $('#room-number').value = r.roomNumber;
-    $('#room-type').value = r.type;
-    $('#room-floor').value = r.floor;
-    $('#room-rate').value = r.ratePerNight;
+
+    if (isAdminOwner) {
+        rows.forEach(row => row.style.display = '');
+        if (roomNumberGroup) roomNumberGroup.style.display = '';
+        if (roomTypeGroup) roomTypeGroup.style.display = '';
+        if (roomFloorGroup) roomFloorGroup.style.display = '';
+        if (roomRateGroup) roomRateGroup.style.display = '';
+        if (roomImageGroup) roomImageGroup.style.display = '';
+        $('#room-number').required = true;
+        $('#room-type').required = true;
+        $('#room-floor').required = true;
+        $('#room-rate').required = true;
+        $('#room-number').value = r.roomNumber;
+        $('#room-type').value = r.type;
+        $('#room-floor').value = r.floor;
+        $('#room-rate').value = r.ratePerNight;
+        $('#room-image-url').value = r.imageUrl || '';
+    } else {
+        rows.forEach(row => row.style.display = 'none');
+        if (roomNumberGroup) roomNumberGroup.style.display = 'none';
+        if (roomTypeGroup) roomTypeGroup.style.display = 'none';
+        if (roomFloorGroup) roomFloorGroup.style.display = 'none';
+        if (roomRateGroup) roomRateGroup.style.display = 'none';
+        if (roomImageGroup) roomImageGroup.style.display = 'none';
+        // Show the status + notes rows
+        if (rows[2]) rows[2].style.display = ''; // status row
+        if (roomImageGroup) roomImageGroup.style.display = 'none'; // hide image URL within status row
+        const notesGroup = $('#room-issue-notes')?.closest('.form-group');
+        if (notesGroup) notesGroup.style.display = '';
+        $('#room-number').required = false;
+        $('#room-type').required = false;
+        $('#room-floor').required = false;
+        $('#room-rate').required = false;
+    }
     $('#room-status-input').value = r.status;
-    $('#room-image-url').value = r.imageUrl || '';
     $('#room-issue-notes').value = r.issueNotes || '';
     openModal('room-modal');
 };
@@ -564,20 +620,39 @@ window.editRoom = async function(id) {
 $('#room-form').addEventListener('submit', async e => {
     e.preventDefault();
     const editId = $('#room-edit-id').value;
-    const body = JSON.stringify({
-        roomNumber: $('#room-number').value.trim(),
-        type: $('#room-type').value,
-        floor: parseInt($('#room-floor').value),
-        status: $('#room-status-input').value,
-        ratePerNight: parseFloat($('#room-rate').value),
-        imageUrl: $('#room-image-url').value.trim() || null,
-        issueNotes: $('#room-issue-notes').value.trim() || null,
-    });
+    const isAdminOwner = isAdminOrOwner();
+    const status = $('#room-status-input').value;
+    const issueNotes = $('#room-issue-notes').value.trim() || null;
     try {
         if (editId) {
-            await api(`${API.rooms}/${editId}`, { method: 'PUT', body });
+            if (isAdminOwner) {
+                const body = JSON.stringify({
+                    roomNumber: $('#room-number').value.trim(),
+                    type: $('#room-type').value,
+                    floor: parseInt($('#room-floor').value),
+                    status: status,
+                    ratePerNight: parseFloat($('#room-rate').value),
+                    imageUrl: $('#room-image-url').value.trim() || null,
+                    issueNotes: issueNotes,
+                });
+                await api(`${API.rooms}/${editId}`, { method: 'PUT', body });
+            } else {
+                await api(`${API.rooms}/${editId}/status?status=${status}`, { method: 'PATCH' });
+                if (issueNotes !== null) {
+                    await api(`${API.rooms}/${editId}/notes`, { method: 'PATCH', body: JSON.stringify({ issueNotes }) });
+                }
+            }
             toast('Room updated');
         } else {
+            const body = JSON.stringify({
+                roomNumber: $('#room-number').value.trim(),
+                type: $('#room-type').value,
+                floor: parseInt($('#room-floor').value),
+                status: status,
+                ratePerNight: parseFloat($('#room-rate').value),
+                imageUrl: $('#room-image-url').value.trim() || null,
+                issueNotes: issueNotes,
+            });
             await api(API.rooms, { method: 'POST', body });
             toast('Room created');
         }
@@ -637,24 +712,29 @@ function renderMenuGrid() {
                 <span class="badge badge-outlined">${item.category}</span>
             </div>
             <div class="menu-card-footer">
-                <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editMenuItem(${item.id})">EDIT</button>
-                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();confirmDeleteMenu(${item.id},'${escapedName}')">DELETE</button>
+                ${isAdminOrOwner()
+                    ? `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editMenuItem(${item.id})">EDIT</button>
+                       <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();confirmDeleteMenu(${item.id},'${escapedName}')">DELETE</button>`
+                    : `<button class="btn btn-sm ${item.available ? 'btn-outline' : 'btn-primary'}" onclick="event.stopPropagation();toggleMenuAvailability(${item.id})">${item.available ? 'SET UNAVAILABLE' : 'SET AVAILABLE'}</button>`}
             </div>
         </div>`;
         }).join('');
     }
 
-    // Always append the "Add New Item" card
-    html += `
-    <div class="add-new-card" id="add-new-menu-card">
-        <span class="add-new-card-icon">+</span>
-        <span class="add-new-card-label">ADD NEW ITEM</span>
-    </div>`;
+    // Append the "Add New Item" card (admin/owner only)
+    if (isAdminOrOwner()) {
+        html += `
+        <div class="add-new-card" id="add-new-menu-card">
+            <span class="add-new-card-icon">+</span>
+            <span class="add-new-card-label">ADD NEW ITEM</span>
+        </div>`;
+    }
 
     grid.innerHTML = html;
 
     // Wire up the add-new card click
-    $('#add-new-menu-card').addEventListener('click', () => {
+    const addNewCard = $('#add-new-menu-card');
+    if (addNewCard) addNewCard.addEventListener('click', () => {
         $('#menu-modal-title').textContent = 'ADD ITEM';
         $('#menu-submit-btn').textContent = 'SAVE';
         $('#menu-form').reset();
@@ -705,6 +785,15 @@ window.editMenuItem = function(id) {
     openModal('menu-modal');
 };
 
+// Toggle menu availability (for non-admin/owner users)
+window.toggleMenuAvailability = async function(id) {
+    try {
+        await api(`${API.menu}/${id}/toggle-availability`, { method: 'PATCH' });
+        toast('Availability toggled');
+        loadMenu();
+    } catch (e) { /* toast shown */ }
+};
+
 // Menu form submit
 $('#menu-form').addEventListener('submit', async e => {
     e.preventDefault();
@@ -744,6 +833,10 @@ let actionCategoryFilter = '';
 let actionSearchTerm = '';
 
 async function loadActionItems() {
+    if (!isAdminOrOwnerOrManager()) {
+        document.querySelector('#page-action-items .page-main').innerHTML = '<div class="empty-state"><p>Access denied.</p></div>';
+        return;
+    }
     const params = new URLSearchParams();
     if (actionStatusFilter) params.set('status', actionStatusFilter);
     if (actionCategoryFilter) params.set('category', actionCategoryFilter);
@@ -878,7 +971,7 @@ $('#btn-confirm-delete').addEventListener('click', async () => {
             loadOrders();
         } else if (type === 'inventory') {
             await api(`${API.inventory}/${id}`, { method: 'DELETE' });
-            toast('Inventory item deleted');
+            toast('Item deleted');
             loadInventory();
         } else if (type === 'user') {
             await api(`${API.userMgmt}/${id}`, { method: 'DELETE' });
@@ -1357,6 +1450,13 @@ async function loadBillingPage() {
     });
     populateBillingDropdowns();
     renderBillingCart();
+
+    // Restrict price editing and discount for User role
+    const isUser = !isAdminOrOwner();
+    const manualSection = document.getElementById('billing-manual-section');
+    if (manualSection) manualSection.style.display = isUser ? 'none' : '';
+    const discountRow = document.querySelector('#billing-discount')?.closest('.billing-total-row');
+    if (discountRow) discountRow.style.display = isUser ? 'none' : '';
 }
 
 function populateBillingDropdowns() {
@@ -1778,6 +1878,10 @@ function getInvDateRange(filter) {
 }
 
 async function loadInvoiceHistory(page = 0) {
+    if (!isAdminOrOwnerOrManager()) {
+        document.querySelector('#page-invoice-history .page-main').innerHTML = '<div class="empty-state"><p>Access denied. Admin, Owner, or Manager role required.</p></div>';
+        return;
+    }
     const params = new URLSearchParams();
     params.set('page', page);
     params.set('size', '15');
@@ -1831,6 +1935,31 @@ function renderInvoiceHistory() {
     }).join('');
 
     renderInvPagination(pagination);
+}
+
+async function downloadInvoiceExport() {
+    try {
+        const params = new URLSearchParams();
+        const { dateFrom, dateTo } = getInvDateRange(invDateFilter);
+        if (dateFrom) params.set('dateFrom', dateFrom);
+        if (dateTo) params.set('dateTo', dateTo);
+        const qs = params.toString();
+        const url = `${API.bills}/export/csv${qs ? '?' + qs : ''}`;
+        const response = await fetch(url, {
+            headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        if (!response.ok) { toast('Export failed', 'error'); return; }
+        const blob = await response.blob();
+        const dlUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = dlUrl;
+        a.download = 'invoice_history.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(dlUrl);
+        toast('Invoice history exported');
+    } catch (e) { toast('Export failed', 'error'); }
 }
 
 function renderInvPagination(container) {
@@ -1891,7 +2020,7 @@ window.viewInvoiceDetail = async function(id) {
                 </div>
                 ${inv.aiDescription ? '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-light);font-size:var(--fs-xs);color:var(--text-muted);font-style:italic">' + inv.aiDescription + '</div>' : ''}
                 <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-light);display:flex;gap:8px;justify-content:flex-end">
-                    <button class="btn btn-outline btn-sm" onclick="openEditInvoice(${inv.id})">EDIT</button>
+                    ${isAdminOrOwner() ? '<button class="btn btn-outline btn-sm" onclick="openEditInvoice(' + inv.id + ')">EDIT</button>' : ''}
                 </div>
             </div>`;
         openModal('inv-detail-modal');
@@ -1901,6 +2030,7 @@ window.viewInvoiceDetail = async function(id) {
 let editingInvoiceId = null;
 
 window.openEditInvoice = async function(id) {
+    if (!isAdminOrOwner()) { toast('Access denied', 'error'); return; }
     try {
         const inv = await api(`${API.bills}/${id}`);
         editingInvoiceId = id;
@@ -1966,8 +2096,13 @@ let inventoryTypeFilter = '';
 let inventoryStatusFilter = '';
 let inventoryCategoryFilter = '';
 let inventorySearchTerm = '';
+let selectedDiscontinuedIds = new Set();
 
 async function loadInventory() {
+    if (!isAdminOrOwnerOrManager()) {
+        document.querySelector('#page-inventory .page-main').innerHTML = '<div class="empty-state"><p>Access denied. Admin, Owner, or Manager role required.</p></div>';
+        return;
+    }
     const params = new URLSearchParams();
     if (inventoryTypeFilter) params.set('type', inventoryTypeFilter);
     if (inventoryStatusFilter) params.set('status', inventoryStatusFilter);
@@ -1982,7 +2117,11 @@ async function loadInventory() {
 
 function renderInventoryGrid() {
     const grid = document.getElementById('inventory-grid');
+    const bar = document.getElementById('discontinued-bar');
     if (!grid) return;
+
+    const isDiscontinuedView = inventoryStatusFilter === 'DISCONTINUED';
+
     const data = inventorySearchTerm
         ? inventoryData.filter(item =>
             (item.name && item.name.toLowerCase().includes(inventorySearchTerm)) ||
@@ -1994,6 +2133,7 @@ function renderInventoryGrid() {
 
     if (!data.length) {
         grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><p>No inventory items found.</p></div>';
+        if (bar) bar.style.display = 'none';
         return;
     }
 
@@ -2008,36 +2148,77 @@ function renderInventoryGrid() {
         return s.replace(/_/g, ' ');
     }
 
-    grid.innerHTML = data.map(item => `
-        <div class="room-card">
-            <div class="room-card-header">
-                <span class="room-card-id">${item.name}</span>
-                <span class="badge ${invBadgeClass(item.status)}">${fmtStatus(item.status)}</span>
+    if (isDiscontinuedView) {
+        const checkedCount = selectedDiscontinuedIds.size;
+        if (bar) {
+            bar.style.display = 'flex';
+            bar.querySelector('#discontinued-count').textContent = checkedCount + ' selected';
+        }
+        grid.innerHTML = data.map(item => {
+            const checked = selectedDiscontinuedIds.has(item.id) ? 'checked' : '';
+            return `
+            <div class="room-card" style="cursor:pointer">
+                <div class="room-card-header">
+                    <label style="display:flex;align-items:center;gap:10px;width:100%;cursor:pointer">
+                        <input type="checkbox" class="discontinued-checkbox" data-id="${item.id}" ${checked} style="width:18px;height:18px;accent-color:var(--accent)">
+                        <span class="room-card-id" style="flex:1">${item.name}</span>
+                    </label>
+                </div>
+                <div class="room-card-body">
+                    <div class="room-card-row"><span class="room-card-label">TYPE:</span><span class="room-card-value">${item.type}</span></div>
+                    <div class="room-card-row"><span class="room-card-label">CATEGORY:</span><span class="room-card-value">${item.category}</span></div>
+                    <div class="room-card-row"><span class="room-card-label">QTY:</span><span class="room-card-value">${item.quantity} ${item.unit}</span></div>
+                </div>
+            </div>`;
+        }).join('');
+
+        grid.querySelectorAll('.discontinued-checkbox').forEach(cb => {
+            cb.addEventListener('change', function() {
+                const id = parseInt(this.dataset.id);
+                if (this.checked) {
+                    selectedDiscontinuedIds.add(id);
+                } else {
+                    selectedDiscontinuedIds.delete(id);
+                }
+                const count = selectedDiscontinuedIds.size;
+                if (bar) bar.querySelector('#discontinued-count').textContent = count + ' selected';
+            });
+        });
+    } else {
+        if (bar) bar.style.display = 'none';
+        selectedDiscontinuedIds.clear();
+
+        grid.innerHTML = data.map(item => `
+            <div class="room-card">
+                <div class="room-card-header">
+                    <span class="room-card-id">${item.name}</span>
+                    <span class="badge ${invBadgeClass(item.status)}">${fmtStatus(item.status)}</span>
+                </div>
+                <div class="room-card-body">
+                    <div class="room-card-row"><span class="room-card-label">TYPE:</span><span class="room-card-value">${item.type}</span></div>
+                    <div class="room-card-row"><span class="room-card-label">CATEGORY:</span><span class="room-card-value">${item.category}</span></div>
+                    <div class="room-card-row"><span class="room-card-label">QTY:</span><span class="room-card-value">${item.quantity} ${item.unit}</span></div>
+                    <div class="room-card-row"><span class="room-card-label">REORDER:</span><span class="room-card-value">
+                        <span style="display:inline-flex;align-items:center;gap:6px">
+                            <button class="btn btn-outline btn-sm" onclick="adjustReorderLevel(${item.id}, -1)" style="padding:0 4px;min-width:22px;height:20px;line-height:16px;font-size:12px;color:var(--danger);border-color:var(--border)">−</button>
+                            <span id="reorder-val-${item.id}" style="min-width:20px;text-align:center;font-weight:700">${item.reorderLevel}</span>
+                            <button class="btn btn-outline btn-sm" onclick="adjustReorderLevel(${item.id}, 1)" style="padding:0 4px;min-width:22px;height:20px;line-height:16px;font-size:12px;color:var(--success);border-color:var(--border)">+</button>
+                            ${item.unit}
+                        </span>
+                    </span></div>
+                    ${item.notes ? `<div class="room-card-row"><span class="room-card-label">NOTES:</span><span class="room-card-value">${item.notes}</span></div>` : ''}
+                </div>
+                <div class="room-card-actions" style="margin-top:12px;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
+                    ${item.status !== 'DISCONTINUED' ? `
+                        <button class="btn btn-outline btn-sm" onclick="adjustInvQty(${item.id}, 1)" style="color:var(--success)">+1</button>
+                        <button class="btn btn-outline btn-sm" onclick="adjustInvQty(${item.id}, -1)" style="color:var(--danger)">-1</button>
+                    ` : ''}
+                    <button class="btn btn-outline btn-sm" onclick="editInventoryItem(${item.id})">EDIT</button>
+                    <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="confirmDeleteInventory(${item.id},'${item.name.replace(/'/g,"\\'")}')">DELETE</button>
+                </div>
             </div>
-            <div class="room-card-body">
-                <div class="room-card-row"><span class="room-card-label">TYPE:</span><span class="room-card-value">${item.type}</span></div>
-                <div class="room-card-row"><span class="room-card-label">CATEGORY:</span><span class="room-card-value">${item.category}</span></div>
-                <div class="room-card-row"><span class="room-card-label">QTY:</span><span class="room-card-value">${item.quantity} ${item.unit}</span></div>
-                <div class="room-card-row"><span class="room-card-label">REORDER:</span><span class="room-card-value">
-                    <span style="display:inline-flex;align-items:center;gap:6px">
-                        <button class="btn btn-outline btn-sm" onclick="adjustReorderLevel(${item.id}, -1)" style="padding:0 4px;min-width:22px;height:20px;line-height:16px;font-size:12px;color:var(--danger);border-color:var(--border)">−</button>
-                        <span id="reorder-val-${item.id}" style="min-width:20px;text-align:center;font-weight:700">${item.reorderLevel}</span>
-                        <button class="btn btn-outline btn-sm" onclick="adjustReorderLevel(${item.id}, 1)" style="padding:0 4px;min-width:22px;height:20px;line-height:16px;font-size:12px;color:var(--success);border-color:var(--border)">+</button>
-                        ${item.unit}
-                    </span>
-                </span></div>
-                ${item.notes ? `<div class="room-card-row"><span class="room-card-label">NOTES:</span><span class="room-card-value">${item.notes}</span></div>` : ''}
-            </div>
-            <div class="room-card-actions" style="margin-top:12px;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
-                ${item.status !== 'DISCONTINUED' ? `
-                    <button class="btn btn-outline btn-sm" onclick="adjustInvQty(${item.id}, 1)" style="color:var(--success)">+1</button>
-                    <button class="btn btn-outline btn-sm" onclick="adjustInvQty(${item.id}, -1)" style="color:var(--danger)">-1</button>
-                ` : ''}
-                <button class="btn btn-outline btn-sm" onclick="editInventoryItem(${item.id})">EDIT</button>
-                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="confirmDeleteInventory(${item.id},'${item.name.replace(/'/g,"\\'")}')">DELETE</button>
-            </div>
-        </div>
-    `).join('');
+        `).join('');
+    }
 }
 
 window.adjustInvQty = async function(id, delta) {
@@ -2089,7 +2270,7 @@ window.editInventoryItem = function(id) {
 };
 
 window.confirmDeleteInventory = function(id, name) {
-    document.getElementById('delete-msg').textContent = 'Delete "' + name + '" from inventory?';
+    document.getElementById('delete-msg').textContent = 'Discontinue "' + name + '" from inventory?';
     window.pendingDelete = { type: 'inventory', id };
     openModal('delete-modal');
 };
@@ -2161,6 +2342,34 @@ $$('#inv-category-filters .filter-list-item').forEach(btn => {
         inventoryCategoryFilter = btn.dataset.value || '';
         loadInventory();
     });
+});
+
+// Discontinued bulk actions
+document.getElementById('btn-restore-discontinued')?.addEventListener('click', async () => {
+    if (!selectedDiscontinuedIds.size) { toast('No items selected', 'error'); return; }
+    const ids = [...selectedDiscontinuedIds];
+    try {
+        await Promise.all(ids.map(id =>
+            api(`${API.inventory}/${id}/status?status=IN_STOCK`, { method: 'PATCH' })
+        ));
+        toast(ids.length + ' item(s) restored');
+        selectedDiscontinuedIds.clear();
+        loadInventory();
+    } catch (e) { /* toast shown */ }
+});
+
+document.getElementById('btn-delete-discontinued')?.addEventListener('click', async () => {
+    if (!selectedDiscontinuedIds.size) { toast('No items selected', 'error'); return; }
+    const ids = [...selectedDiscontinuedIds];
+    if (!confirm('Permanently delete ' + ids.length + ' item(s)? This cannot be undone.')) return;
+    try {
+        await Promise.all(ids.map(id =>
+            api(`${API.inventory}/${id}/hard`, { method: 'DELETE' })
+        ));
+        toast(ids.length + ' item(s) permanently deleted');
+        selectedDiscontinuedIds.clear();
+        loadInventory();
+    } catch (e) { /* toast shown */ }
 });
 
 // Search
@@ -2437,6 +2646,8 @@ function openBillingCart() {
     renderBillingCartItems();
     const body = document.getElementById('billing-cart-body');
     if (body) body.scrollTop = 0;
+    const cartDiscountRow = document.querySelector('#cart-discount-input')?.closest('.cart-total-row');
+    if (cartDiscountRow) cartDiscountRow.style.display = isAdminOrOwner() ? '' : 'none';
     openModal('billing-cart-modal');
 }
 
@@ -2604,6 +2815,8 @@ async function downloadMetricsExport(format) {
 document.getElementById('btn-export-metrics-csv')?.addEventListener('click', () => downloadMetricsExport('csv'));
 document.getElementById('btn-export-metrics-json')?.addEventListener('click', () => downloadMetricsExport('json'));
 
+document.getElementById('btn-export-invoices')?.addEventListener('click', downloadInvoiceExport);
+
 // ═══════════════════════════════════════════
 //  ANALYTICS MODULE
 // ═══════════════════════════════════════════
@@ -2758,8 +2971,8 @@ document.getElementById('btn-activity-apply')?.addEventListener('click', functio
 let usersData = [];
 
 async function loadUserMgmt() {
-    if (!isAdminOrOwner()) {
-        document.getElementById('user-mgmt-grid').innerHTML = '<div class="empty-state"><p>Access denied.</p></div>';
+    if (!isAdmin()) {
+        document.getElementById('user-mgmt-grid').innerHTML = '<div class="empty-state"><p>Access denied. Admin role required.</p></div>';
         return;
     }
     try {
@@ -2858,8 +3071,8 @@ let payrollSearchTerm = '';
 let selectedEmployeeId = null;
 
 async function loadPayroll() {
-    if (!isOwner()) {
-        document.getElementById('payroll-grid').innerHTML = '<div class="empty-state"><p>Access denied. Owner role required.</p></div>';
+    if (!isAdminOrOwner()) {
+        document.getElementById('payroll-grid').innerHTML = '<div class="empty-state"><p>Access denied. Admin or Owner role required.</p></div>';
         return;
     }
     try {
@@ -3146,6 +3359,14 @@ document.querySelectorAll('#payroll-dept-filters .filter-list-item').forEach(btn
 
 function isAdminOrOwner() {
     return userRole === 'ROLE_ADMIN' || userRole === 'ROLE_OWNER';
+}
+
+function isManager() {
+    return userRole === 'ROLE_MANAGER';
+}
+
+function isAdminOrOwnerOrManager() {
+    return isAdminOrOwner() || isManager();
 }
 
 async function loadMockModePage() {

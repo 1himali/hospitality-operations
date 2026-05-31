@@ -12,6 +12,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -248,6 +252,20 @@ public class BillServiceImpl implements BillService {
 
     @Override
     @Transactional
+    public BillResponseDto flagInvoice(Long id, String note) {
+        Bill bill = billRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Bill", "id", id));
+        bill.setFlagged(!Boolean.TRUE.equals(bill.getFlagged()));
+        bill.setFlagNote(note);
+        Bill saved = billRepository.save(bill);
+        List<BillResponseDto.LineItemDto> lineItems = buildLineItemsFromDb(saved);
+        BillResponseDto dto = BillMapper.toDto(saved, lineItems);
+        enrichTableNumber(dto);
+        return dto;
+    }
+
+    @Override
+    @Transactional
     public BillResponseDto updateBill(Long id, BillRequestDto requestDto) {
         Bill bill = billRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Bill", "id", id));
@@ -353,6 +371,18 @@ public class BillServiceImpl implements BillService {
 
     @Override
     public Page<BillResponseDto> getBills(Instant dateFrom, Instant dateTo, Pageable pageable) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getAuthorities() != null) {
+            boolean isUserOrManager = auth.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .anyMatch(r -> r.equals("ROLE_USER") || r.equals("ROLE_MANAGER"));
+            if (isUserOrManager) {
+                Instant sevenDaysAgo = Instant.now().minus(7, java.time.temporal.ChronoUnit.DAYS);
+                if (dateFrom == null || dateFrom.isBefore(sevenDaysAgo)) {
+                    dateFrom = sevenDaysAgo;
+                }
+            }
+        }
         Page<Bill> billPage;
         if (dateFrom != null && dateTo != null) {
             billPage = billRepository.findAllByCreatedAtBetween(dateFrom, dateTo, pageable);
@@ -369,6 +399,45 @@ public class BillServiceImpl implements BillService {
             enrichTableNumber(dto);
             return dto;
         });
+    }
+
+    @Override
+    public String exportCsv(Instant dateFrom, Instant dateTo) {
+        List<Bill> bills;
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
+        if (dateFrom != null && dateTo != null) {
+            bills = billRepository.findAllByCreatedAtBetween(dateFrom, dateTo, sort);
+        } else if (dateFrom != null) {
+            bills = billRepository.findAllByCreatedAtAfter(dateFrom, sort);
+        } else if (dateTo != null) {
+            bills = billRepository.findAllByCreatedAtBefore(dateTo, sort);
+        } else {
+            bills = billRepository.findAll(sort);
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Invoice#,Date,Server,Customer,Subtotal,Tax,Discount,Total,Status,Items\n");
+        for (Bill bill : bills) {
+            sb.append(escapeCsv(bill.getInvoiceNumber())).append(",");
+            sb.append(bill.getCreatedAt() != null ? bill.getCreatedAt().toString() : "").append(",");
+            sb.append(escapeCsv(bill.getServerName())).append(",");
+            sb.append(escapeCsv(bill.getCustomerName())).append(",");
+            sb.append(bill.getSubtotal()).append(",");
+            sb.append(bill.getTaxAmount()).append(",");
+            sb.append(bill.getDiscount()).append(",");
+            sb.append(bill.getTotalDue()).append(",");
+            sb.append(bill.getStatus()).append(",");
+            sb.append(escapeCsv(bill.getAiDescription())).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 
     private List<BillResponseDto.LineItemDto> buildLineItemsFromDb(Bill bill) {

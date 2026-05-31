@@ -122,9 +122,20 @@ public class InventoryItemServiceImpl implements InventoryItemService {
 
     @Override
     @Transactional
-    public void deleteInventoryItem(Long id) {
+    public InventoryItemResponseDto deleteInventoryItem(Long id) {
         InventoryItem entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("InventoryItem", "id", id));
-        repository.delete(entity);
+        entity.setStatus(InventoryStatus.DISCONTINUED);
+        InventoryItem saved = repository.save(entity);
+        return InventoryItemMapper.toDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public void hardDeleteInventoryItem(Long id) {
+        if (!repository.existsById(id)) {
+            throw new ResourceNotFoundException("InventoryItem", "id", id);
+        }
+        repository.deleteById(id);
     }
 }

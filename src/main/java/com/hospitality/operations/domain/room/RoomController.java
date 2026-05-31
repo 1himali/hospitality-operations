@@ -1,6 +1,7 @@
 package com.hospitality.operations.domain.room;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -69,6 +70,15 @@ public class RoomController {
         RoomResponseDto prev = roomService.getRoomById(id);
         RoomResponseDto response = roomService.updateRoom(id, requestDto);
         auditHelper.record("UPDATE", "ROOM", id, "status=" + prev.getStatus(), "status=" + response.getStatus(), "Updated room: " + response.getRoomNumber());
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/notes")
+    public ResponseEntity<RoomResponseDto> updateRoomNotes(@PathVariable Long id,
+                                                           @RequestBody Map<String, String> body) {
+        String issueNotes = body.get("issueNotes");
+        RoomResponseDto response = roomService.updateRoomNotes(id, issueNotes);
+        auditHelper.record("UPDATE", "ROOM", id, "Updated notes for room: " + response.getRoomNumber());
         return ResponseEntity.ok(response);
     }
 

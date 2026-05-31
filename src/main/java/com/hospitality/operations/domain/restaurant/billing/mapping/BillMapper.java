@@ -31,6 +31,8 @@ public final class BillMapper {
                 .aiDescription(bill.getAiDescription())
                 .tenantSchema(bill.getTenantSchema())
                 .createdAt(bill.getCreatedAt())
+                .flagged(bill.getFlagged())
+                .flagNote(bill.getFlagNote())
                 .lineItems(lineItems)
                 .build();
     }

@@ -89,6 +89,13 @@ public class Bill {
     @Column(name = "ai_description", columnDefinition = "TEXT")
     private String aiDescription;
 
+    @Column(name = "flagged", nullable = false)
+    @Builder.Default
+    private Boolean flagged = false;
+
+    @Column(name = "flag_note", columnDefinition = "TEXT")
+    private String flagNote;
+
     @Column(name = "tenant_schema", nullable = false, length = 100)
     @Builder.Default
     private String tenantSchema = "default";

@@ -23,5 +23,7 @@ public interface RoomService {
 
     RoomResponseDto updateRoomStatus(Long id, RoomStatus status);
 
+    RoomResponseDto updateRoomNotes(Long id, String issueNotes);
+
     void deleteRoom(Long id);
 }

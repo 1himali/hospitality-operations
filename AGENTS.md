@@ -34,17 +34,18 @@ You are working on an existing Spring Boot 3.5.14 + Java 21 + Maven project call
 
 ## RBAC Enhancements
 
-Three-role system implemented:
+Four-role system implemented:
 
 | Role | Credentials | Access |
 |------|-------------|--------|
-| **User** | `user` / `user` | Basic app workflows (rooms, menu, orders, tables, billing, inventory, action items, assistant, calculator, invoice history) |
-| **Admin** | `admin` / `abcd` | User + Invoice Management, User CRUD, password resets, Analytics, API Metrics (incl. CSV/JSON export), Mock Mode toggle, Assistant enable/disable. **Restricted from Payroll.** |
-| **Owner** | `owner` / `4321` | Full access including Payroll Manager CRUD, Payroll CSV export, Payroll Records (bonus/deductions/history), System Configuration |
+| **User** | `user` / `1234` | Basic app workflows (rooms, menu, orders, tables, billing, calculator). **Restricted from INVOICE HISTORY, TASKS, Inventory, User Management, Payroll.** |
+| **Manager** | `manager` / `mngr` | Everything User can, plus Inventory CRUD and TASKS. **Restricted from billing price editing, invoice editing, User Management, Payroll.** |
+| **Admin** | `admin` / `abcd` | User + Invoice Management, User CRUD, password resets, Analytics, API Metrics (incl. CSV/JSON export), Mock Mode toggle, Assistant enable/disable, TASKS, Inventory. **Restricted from Payroll.** |
+| **Owner** | `owner` / `4321` | Full access including Payroll Manager CRUD, Payroll CSV export, Payroll Records (bonus/deductions/history), System Configuration, TASKS, Inventory. |
 
 ### Backend changes
-- **SecurityConfig** — Complete role-based endpoint rules: `ROLE_OWNER` for payroll, `ROLE_ADMIN`+`ROLE_OWNER` for user mgmt, metrics, mock mode, analytics, assistant admin; `ROLE_USER`+ for all other API
-- **DataInitializer** — Updated `admin` password to `abcd`, added `owner`/`4321` seed
+- **SecurityConfig** — Complete role-based endpoint rules: `ROLE_OWNER` for payroll, `ROLE_ADMIN`+`ROLE_OWNER` for user mgmt, metrics, mock mode, analytics, assistant admin; `ROLE_USER`+ for all other API; `ROLE_MANAGER` added to inventory + action-items; action-items restricted from `ROLE_USER`; invoice history GET listing + CSV export restricted to `ROLE_ADMIN`+`ROLE_OWNER`+`ROLE_MANAGER`
+- **DataInitializer** — Updated `admin` password to `abcd`, added `owner`/`4321` seed, added `manager`/`mngr` seed
 - **V12 migration** — `payroll_employees` table
 - **V13 migration** — `payroll_records` table (employee_id FK, base_salary, bonus, deductions, net_pay, payment_date, notes, status)
 - **PayrollEmployee** entity, repository, service, controller (`/api/v1/admin/payroll/employees/**`) — Owner-only CRUD, CSV export, search/filter by name/status/department
@@ -52,11 +53,13 @@ Three-role system implemented:
 - **UserManagementController** (`/api/v1/admin/users/**`) — Admin/Owner: list, create, password reset
 - **ApiMetricsController** — Added `/export/csv` and `/export/json` endpoints (Admin/Owner)
 - **ApiUsageLogService** — Added `exportCsv()` and `exportJson()` methods
+- **BillController** — Added `/export/csv` endpoint (Admin/Owner/Manager) with date-filtered CSV export
+- **BillServiceImpl** — Added `exportCsv()` method
 
 ### Frontend changes
-- **Sidebar** — "USER MGMT", "API METRICS", "MOCK MODE", "ANALYTICS" visible to Admin/Owner; "PAYROLL" visible to Owner only (all hidden for User role)
-- **`updateSidebarVisibility()`** — Extended to show/hide API METRICS, MOCK MODE, ANALYTICS sidebar items via `isAdminOrOwner()`
-- **Page-level guards** — `loadApiMetrics()`, `loadAnalytics()`, `loadMockModePage()` now block non-admin/owner users with "Access denied" message (replacing page content); matches pattern already used by `loadUserMgmt()` and `loadPayroll()`
+- **Sidebar** — "USER MGMT", "API METRICS", "MOCK MODE", "ANALYTICS", "PAYROLL" visible to Admin/Owner; "TASKS", "INVENTORY", "INVOICE HISTORY" visible to Admin/Owner/Manager (all hidden for User role)
+- **`updateSidebarVisibility()`** — Extended to show/hide TASKS, INVENTORY, INVOICE HISTORY, API METRICS, MOCK MODE, ANALYTICS sidebar items via `isAdminOrOwner()` / `isAdminOrOwnerOrManager()`
+- **Page-level guards** — `loadApiMetrics()`, `loadAnalytics()`, `loadMockModePage()` now block non-admin/owner users with "Access denied" message (replacing page content); `loadActionItems()` blocks non-admin/owner/manager; `loadInventory()` blocks non-admin/owner/manager; `loadInvoiceHistory()` blocks non-admin/owner/manager; matches pattern already used by `loadUserMgmt()` and `loadPayroll()`
 - **API Metrics export buttons** — Effectively hidden from User role because the page-level guard replaces the entire page content before User reaches them
 - **Mock Mode controls** — Effectively hidden from User role via the same page-level guard mechanism
 - **User Management page** — list users, add user, reset password, delete user

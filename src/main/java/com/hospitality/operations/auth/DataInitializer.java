@@ -75,6 +75,11 @@ public class DataInitializer implements CommandLineRunner {
                     .username("owner").passwordHash(passwordEncoder.encode("4321"))
                     .role(UserRole.ROLE_OWNER).tenantSchema("default").build());
         }
+        if (!userRepository.existsByUsername("manager")) {
+            userRepository.save(User.builder()
+                    .username("manager").passwordHash(passwordEncoder.encode("mngr"))
+                    .role(UserRole.ROLE_MANAGER).tenantSchema("default").build());
+        }
     }
 
     private void seedRooms() {

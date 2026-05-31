@@ -40,6 +40,9 @@ public class BillResponseDto {
     private String tenantSchema;
     private Instant createdAt;
 
+    private Boolean flagged;
+    private String flagNote;
+
     private List<LineItemDto> lineItems;
 
     @Getter

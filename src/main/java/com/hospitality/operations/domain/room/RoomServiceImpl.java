@@ -84,6 +84,16 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     @Transactional
+    public RoomResponseDto updateRoomNotes(Long id, String issueNotes) {
+        Room room = roomRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Room", "id", id));
+        room.setIssueNotes(issueNotes);
+        Room updatedRoom = roomRepository.save(room);
+        return RoomMapper.toDto(updatedRoom);
+    }
+
+    @Override
+    @Transactional
     public void deleteRoom(Long id) {
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Room", "id", id));

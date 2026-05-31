@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -21,4 +22,10 @@ public interface BillRepository extends JpaRepository<Bill, Long> {
     Page<Bill> findAllByCreatedAtAfter(Instant from, Pageable pageable);
 
     Page<Bill> findAllByCreatedAtBefore(Instant to, Pageable pageable);
+
+    List<Bill> findAllByCreatedAtBetween(Instant from, Instant to, Sort sort);
+
+    List<Bill> findAllByCreatedAtAfter(Instant from, Sort sort);
+
+    List<Bill> findAllByCreatedAtBefore(Instant to, Sort sort);
 }

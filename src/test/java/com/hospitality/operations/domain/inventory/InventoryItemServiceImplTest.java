@@ -207,17 +207,19 @@ class InventoryItemServiceImplTest {
     }
 
     @Test
-    void deleteItem_shouldDelete() {
+    void deleteItem_shouldDiscontinue() {
         InventoryItem item = InventoryItem.builder()
                 .id(1L).name("Item").type(InventoryType.LODGING).category("OTHER")
                 .quantity(10).reorderLevel(5).unit("pcs").status(InventoryStatus.IN_STOCK)
                 .tenantSchema("default").build();
 
         when(repository.findById(1L)).thenReturn(Optional.of(item));
+        when(repository.save(any(InventoryItem.class))).thenAnswer(i -> i.getArgument(0));
 
-        service.deleteInventoryItem(1L);
+        InventoryItemResponseDto result = service.deleteInventoryItem(1L);
 
-        verify(repository).delete(item);
+        assertEquals(InventoryStatus.DISCONTINUED, result.getStatus());
+        verify(repository).save(item);
     }
 
     @Test

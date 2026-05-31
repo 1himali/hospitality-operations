@@ -83,10 +83,18 @@ public class InventoryItemController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteInventoryItem(@PathVariable Long id) {
+    public ResponseEntity<InventoryItemResponseDto> deleteInventoryItem(@PathVariable Long id) {
         InventoryItemResponseDto prev = inventoryService.getInventoryItemById(id);
-        inventoryService.deleteInventoryItem(id);
-        auditHelper.record("DELETE", "INVENTORY_ITEM", id, "Deleted inventory item: " + prev.getName());
+        InventoryItemResponseDto response = inventoryService.deleteInventoryItem(id);
+        auditHelper.record("DELETE", "INVENTORY_ITEM", id, "Discontinued inventory item: " + prev.getName());
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}/hard")
+    public ResponseEntity<Void> hardDeleteInventoryItem(@PathVariable Long id) {
+        InventoryItemResponseDto prev = inventoryService.getInventoryItemById(id);
+        inventoryService.hardDeleteInventoryItem(id);
+        auditHelper.record("HARD_DELETE", "INVENTORY_ITEM", id, "Permanently deleted inventory item: " + prev.getName());
         return ResponseEntity.noContent().build();
     }
 }

@@ -22,4 +22,8 @@ public interface BillService {
     List<BillResponseDto> getAllBills();
 
     Page<BillResponseDto> getBills(Instant dateFrom, Instant dateTo, Pageable pageable);
+
+    String exportCsv(Instant dateFrom, Instant dateTo);
+
+    BillResponseDto flagInvoice(Long id, String note);
 }

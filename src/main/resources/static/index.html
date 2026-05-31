@@ -74,15 +74,15 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
                     DINING
                 </button>
-                <button class="sidebar-item" data-target="action-items">
+                <button class="sidebar-item" id="sidebar-action-items" data-target="action-items">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     TASKS
                 </button>
-                <button class="sidebar-item" data-target="inventory">
+                <button class="sidebar-item" id="sidebar-inventory" data-target="inventory">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>
                     INVENTORY
                 </button>
-                <button class="sidebar-item" data-target="invoice-history">
+                <button class="sidebar-item" id="sidebar-invoice-history" data-target="invoice-history">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     INVOICE HISTORY
                 </button>
@@ -404,7 +404,7 @@
                         </div>
 
                         <!-- Manual entry mode -->
-                        <div class="billing-section" style="background:var(--bg-surface-alt);border-radius:var(--radius);padding:16px;margin-bottom:12px">
+                        <div class="billing-section" id="billing-manual-section" style="background:var(--bg-surface-alt);border-radius:var(--radius);padding:16px;margin-bottom:12px">
                             <h3 class="billing-section-title" style="margin-bottom:8px">MANUAL ENTRY</h3>
                             <div class="billing-add-item-form" style="padding:0">
                                 <input type="text" id="billing-item-desc" placeholder="Description" class="input" style="flex:1;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:var(--fs-sm)">
@@ -480,7 +480,9 @@
                     <div class="page-main">
                         <div class="page-toolbar">
                             <h2 class="page-heading" style="margin:0">INVOICE HISTORY</h2>
-                            <div class="page-toolbar-actions"></div>
+                            <div class="page-toolbar-actions">
+                                <button class="btn btn-sm btn-outline" id="btn-export-invoices">EXPORT CSV</button>
+                            </div>
                         </div>
                         <div class="inv-content">
                             <table class="inv-table" id="inv-table">
@@ -545,6 +547,11 @@
                             <div class="page-toolbar-actions">
                                 <button class="btn btn-primary" id="btn-add-inventory">+ ADD ITEM</button>
                             </div>
+                        </div>
+                        <div class="discontinued-bar" id="discontinued-bar" style="display:none;margin-bottom:12px;padding:10px 16px;background:var(--bg-surface-alt);border:1px solid var(--border);border-radius:var(--radius);align-items:center;gap:12px">
+                            <span id="discontinued-count" style="font-weight:700;color:var(--text-secondary);font-size:var(--fs-sm)">0 selected</span>
+                            <button class="btn btn-sm btn-outline" id="btn-restore-discontinued" style="color:var(--success);border-color:var(--success)">RESTORE</button>
+                            <button class="btn btn-sm btn-outline" id="btn-delete-discontinued" style="color:var(--danger);border-color:var(--danger)">DELETE</button>
                         </div>
                         <div class="card-grid" id="inventory-grid">
                             <div class="loading-state">Loading inventory...</div>
@@ -1274,6 +1281,7 @@
                 <div class="form-group"><label>ROLE *</label>
                     <select id="user-role" required>
                         <option value="ROLE_USER">USER</option>
+                        <option value="ROLE_MANAGER">MANAGER</option>
                         <option value="ROLE_ADMIN">ADMIN</option>
                         <option value="ROLE_OWNER">OWNER</option>
                     </select>

@@ -27,5 +27,7 @@ public interface InventoryItemService {
 
     InventoryItemResponseDto setStatus(Long id, InventoryStatus status);
 
-    void deleteInventoryItem(Long id);
+    InventoryItemResponseDto deleteInventoryItem(Long id);
+
+    void hardDeleteInventoryItem(Long id);
 }

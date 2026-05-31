@@ -1,5 +1,6 @@
 package com.hospitality.operations.domain.restaurant.billing;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 
@@ -8,7 +9,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.hospitality.operations.domain.activity.AuditHelper;
 import com.hospitality.operations.domain.restaurant.billing.dto.BillRequestDto;
 import com.hospitality.operations.domain.restaurant.billing.dto.BillResponseDto;
+
+import java.util.Map;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +53,28 @@ public class BillController {
         BillResponseDto response = billService.updateBill(id, requestDto);
         auditHelper.record("UPDATE", "BILL", id, "Updated bill: " + response.getInvoiceNumber());
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/flag")
+    public ResponseEntity<BillResponseDto> flagInvoice(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        String note = body.get("note");
+        BillResponseDto response = billService.flagInvoice(id, note);
+        auditHelper.record("FLAG", "BILL", id, "Invoice flagged: " + response.getInvoiceNumber() + " — " + (Boolean.TRUE.equals(response.getFlagged()) ? "Flagged" : "Unflagged"));
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/export/csv")
+    public ResponseEntity<byte[]> exportCsv(
+            @RequestParam(required = false) Instant dateFrom,
+            @RequestParam(required = false) Instant dateTo) {
+        String csv = billService.exportCsv(dateFrom, dateTo);
+        byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/csv"));
+        headers.setContentDispositionFormData("attachment", "invoice_history.csv");
+        return ResponseEntity.ok().headers(headers).body(bytes);
     }
 
     @GetMapping("/{id}")
