@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hospitality.operations.domain.activity.AuditHelper;
 import com.hospitality.operations.domain.room.dto.RoomRequestDto;
 import com.hospitality.operations.domain.room.dto.RoomResponseDto;
 
@@ -27,10 +28,12 @@ import lombok.RequiredArgsConstructor;
 public class RoomController {
 
     private final RoomService roomService;
+    private final AuditHelper auditHelper;
 
     @PostMapping
     public ResponseEntity<RoomResponseDto> createRoom(@Valid @RequestBody RoomRequestDto requestDto) {
         RoomResponseDto response = roomService.createRoom(requestDto);
+        auditHelper.record("CREATE", "ROOM", response.getId(), "Created room: " + response.getRoomNumber());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -63,20 +66,26 @@ public class RoomController {
     @PutMapping("/{id}")
     public ResponseEntity<RoomResponseDto> updateRoom(@PathVariable Long id,
                                                        @Valid @RequestBody RoomRequestDto requestDto) {
+        RoomResponseDto prev = roomService.getRoomById(id);
         RoomResponseDto response = roomService.updateRoom(id, requestDto);
+        auditHelper.record("UPDATE", "ROOM", id, "status=" + prev.getStatus(), "status=" + response.getStatus(), "Updated room: " + response.getRoomNumber());
         return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<RoomResponseDto> updateRoomStatus(@PathVariable Long id,
                                                              @RequestParam RoomStatus status) {
+        RoomResponseDto prev = roomService.getRoomById(id);
         RoomResponseDto response = roomService.updateRoomStatus(id, status);
+        auditHelper.record("STATUS_CHANGE", "ROOM", id, "status=" + prev.getStatus(), "status=" + response.getStatus(), "Room status: " + prev.getStatus() + " \u2192 " + response.getStatus());
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRoom(@PathVariable Long id) {
+        RoomResponseDto prev = roomService.getRoomById(id);
         roomService.deleteRoom(id);
+        auditHelper.record("DELETE", "ROOM", id, "Deleted room: " + prev.getRoomNumber());
         return ResponseEntity.noContent().build();
     }
 }

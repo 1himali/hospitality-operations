@@ -19,12 +19,12 @@ public class DataInitializer implements CommandLineRunner {
         if (!userRepository.existsByUsername("user")) {
             User testUser = User.builder()
                     .username("user")
-                    .passwordHash(passwordEncoder.encode("user"))
+                    .passwordHash(passwordEncoder.encode("1234"))
                     .role(UserRole.ROLE_USER)
                     .tenantSchema("default")
                     .build();
             userRepository.save(testUser);
-            System.out.println("✓ User created: username=user, password=user");
+            System.out.println("✓ User created: username=user, password=1234");
         }
 
         // Create admin user if it doesn't exist

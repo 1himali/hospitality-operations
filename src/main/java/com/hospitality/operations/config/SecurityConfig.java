@@ -51,6 +51,9 @@ public class SecurityConfig {
                         // ── API METRICS (including export) — Admin / Owner only ──
                         .requestMatchers("/api/v1/metrics/**").hasAnyRole("ADMIN", "OWNER")
 
+                        // ── ACTIVITY — Admin / Owner only ──
+                        .requestMatchers("/api/v1/admin/activity/**").hasAnyRole("ADMIN", "OWNER")
+
                         // ── ASSISTANT ADMIN — Admin / Owner only (enable/disable) ──
                         .requestMatchers("/api/v1/assistant/admin/**").hasAnyRole("ADMIN", "OWNER")
 

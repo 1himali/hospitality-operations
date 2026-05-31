@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hospitality.operations.domain.activity.AuditHelper;
 import com.hospitality.operations.domain.restaurant.billing.dto.BillRequestDto;
 import com.hospitality.operations.domain.restaurant.billing.dto.BillResponseDto;
 
@@ -30,10 +31,12 @@ import lombok.RequiredArgsConstructor;
 public class BillController {
 
     private final BillService billService;
+    private final AuditHelper auditHelper;
 
     @PostMapping
     public ResponseEntity<BillResponseDto> generateBill(@Valid @RequestBody BillRequestDto requestDto) {
         BillResponseDto response = billService.generateBill(requestDto);
+        auditHelper.record("CREATE", "BILL", response.getId(), "Generated bill: " + response.getInvoiceNumber());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

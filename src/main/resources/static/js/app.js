@@ -2,7 +2,7 @@
    HOSPITALITY OPERATIONS — APP.JS
    Matches wireframe navigation structure:
    HOME → LODGING → ROOMS SEARCH / ACTION ITEMS
-        → RESTAURANT → MENU MGMT / ORDER MGMT / TABLE MGMT / BILLING
+         → DINING → MENU MGMT / ORDER MGMT / TABLE MGMT / BILLING
    ═══════════════════════════════════════════ */
 
 const API = { rooms: '/api/v1/rooms', menu: '/api/v1/menu', auth: '/api/v1/auth', actionItems: '/api/v1/action-items', bills: '/api/v1/bills', orders: '/api/v1/orders',     tables: '/api/v1/tables',
@@ -109,6 +109,7 @@ function _refreshFab() {
     const fab = document.getElementById('fab-billing');
     const cnt = document.getElementById('fab-count');
     if (!fab || !cnt) return;
+    if (!isAuthenticated) { fab.style.display = 'none'; return; }
     const c = selCount();
     fab.style.display = c > 0 ? 'flex' : 'none';
     cnt.textContent = c;
@@ -159,18 +160,22 @@ function showLoginPage() {
     const topbar = document.getElementById('topbar');
     const appBody = document.querySelector('.app-body');
     const loginPage = document.getElementById('login-page');
+    const widget = document.getElementById('assistant-widget');
     if (topbar) topbar.style.display = 'none';
     if (appBody) appBody.style.display = 'none';
     if (loginPage) loginPage.style.display = 'flex';
+    if (widget) widget.style.display = 'none';
 }
 
 function showAppPage() {
     const topbar = document.getElementById('topbar');
     const appBody = document.querySelector('.app-body');
     const loginPage = document.getElementById('login-page');
+    const widget = document.getElementById('assistant-widget');
     if (topbar) topbar.style.display = 'flex';
     if (appBody) appBody.style.display = 'flex';
     if (loginPage) loginPage.style.display = 'none';
+    if (widget) widget.style.display = '';
 }
 
 // Check authentication on page load
@@ -268,18 +273,18 @@ const navHistory = [];
 let currentPage = 'home';
 
 // Pages that show the sidebar
-const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'table-mgmt', 'action-items', 'invoice-history', 'inventory', 'calculator', 'assistant', 'api-metrics', 'mock-mode', 'analytics', 'user-mgmt', 'payroll']);
+const sidebarPages = new Set(['rooms-search', 'restaurant', 'menu-mgmt', 'order-mgmt', 'table-mgmt', 'action-items', 'invoice-history', 'inventory', 'calculator', 'assistant', 'api-metrics', 'mock-mode', 'analytics', 'activity', 'user-mgmt', 'payroll']);
 
 // Map pages → topbar titles
 const pageTitles = {
-    'home': 'CAFE HĀNA',
-    'lodging': 'CAFE HĀNA',
-    'rooms-search': 'CAFE HĀNA',
+    'home': 'Himāli\'s Bed n Breakfast',
+    'lodging': 'Himāli\'s Bed n Breakfast',
+    'rooms-search': 'Himāli\'s Bed n Breakfast',
     'action-items': 'ACTION ITEMS',
-    'restaurant': 'CAFE HĀNA',
-    'menu-mgmt': 'CAFE HĀNA',
-    'order-mgmt': 'CAFE HĀNA',
-    'table-mgmt': 'CAFE HĀNA',
+    'restaurant': 'Himāli\'s Bed n Breakfast',
+    'menu-mgmt': 'Himāli\'s Bed n Breakfast',
+    'order-mgmt': 'Himāli\'s Bed n Breakfast',
+    'table-mgmt': 'Himāli\'s Bed n Breakfast',
     'billing': 'BILLING',
     'invoice-history': 'INVOICE HISTORY',
     'inventory': 'INVENTORY',
@@ -288,6 +293,7 @@ const pageTitles = {
     'api-metrics': 'API METRICS',
     'mock-mode': 'MOCK MODE',
     'analytics': 'ANALYTICS',
+    'activity': 'ACTIVITY',
     'user-mgmt': 'USER MANAGEMENT',
     'payroll': 'PAYROLL MANAGER',
 };
@@ -309,6 +315,7 @@ const pageParent = {
     'api-metrics': 'home',
     'mock-mode': 'home',
     'analytics': 'home',
+    'activity': 'home',
     'user-mgmt': 'home',
     'payroll': 'home',
 };
@@ -328,6 +335,7 @@ const sidebarActive = {
     'api-metrics': 'api-metrics',
     'mock-mode': 'mock-mode',
     'analytics': 'analytics',
+    'activity': 'activity',
     'user-mgmt': 'user-mgmt',
     'payroll': 'payroll',
 };
@@ -345,6 +353,7 @@ function updateSidebarVisibility() {
         { id: 'sidebar-api-metrics', show: adminOwner },
         { id: 'sidebar-mock-mode', show: adminOwner },
         { id: 'sidebar-analytics', show: adminOwner },
+        { id: 'sidebar-activity', show: adminOwner },
     ];
     items.forEach(({ id, show }) => {
         const el = document.getElementById(id);
@@ -372,7 +381,14 @@ function showPage(page) {
     if (el) el.classList.add('active');
 
     // Topbar title
-    $('#topbar-title').innerHTML = (pageTitles[page] || 'CAFE HĀNA') + ' <small>by himāli</small>';
+    $('#topbar-title').innerHTML = (pageTitles[page] || 'Himāli\'s Bed n Breakfast') + ' <small>An app for Adv. Java LRMS</small>';
+
+    // Home/back buttons — hidden on landing page
+    const isHome = page === 'home';
+    const btnBack = document.getElementById('btn-back');
+    const btnHome = document.getElementById('btn-home');
+    if (btnBack) btnBack.style.display = isHome ? 'none' : '';
+    if (btnHome) btnHome.style.display = isHome ? 'none' : '';
 
     // Logout button username
     updateLogoutButton();
@@ -404,6 +420,7 @@ function showPage(page) {
     if (page === 'api-metrics') loadApiMetrics();
     if (page === 'mock-mode') loadMockModePage();
     if (page === 'analytics') loadAnalytics();
+    if (page === 'activity') loadActivity();
     if (page === 'user-mgmt') loadUserMgmt();
     if (page === 'payroll') loadPayroll();
 
@@ -413,7 +430,7 @@ function showPage(page) {
 }
 
 // Back button
-$('#btn-back').addEventListener('click', goBack);
+$('#btn-back')?.addEventListener('click', goBack);
 
 // Hub card navigation
 $$('[data-navigate]').forEach(btn => {
@@ -2167,8 +2184,6 @@ function initAssistant() {
     sendBtn?.addEventListener('click', sendQuery);
     input?.addEventListener('keydown', function(e) { if (e.key === 'Enter') sendQuery(); });
 
-    // Show widget after login
-    widget.style.display = '';
 })();
 
 // ═══════════════════════════════════════════
@@ -2568,6 +2583,90 @@ async function loadAnalytics() {
 }
 
 // ═══════════════════════════════════════════
+//  ACTIVITY MODULE (Admin/Owner)
+// ═══════════════════════════════════════════
+
+let activityPage = 0;
+let activityQuery = {};
+
+function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function loadActivity() {
+    if (!isAdminOrOwner()) {
+        document.querySelector('#page-activity .page-main').innerHTML = '<div class="empty-state"><p>Access denied. Admin or Owner role required.</p></div>';
+        return;
+    }
+    try {
+        const actor = document.getElementById('activity-filter-actor')?.value.trim() || '';
+        const module = document.getElementById('activity-filter-module')?.value || '';
+        const actionType = document.getElementById('activity-filter-action')?.value || '';
+        const from = document.getElementById('activity-filter-from')?.value || '';
+        const to = document.getElementById('activity-filter-to')?.value || '';
+        activityQuery = { actor, module, actionType, from, to };
+
+        let url = API.metrics.replace('/metrics', '/admin/activity') + '?page=' + activityPage + '&size=50';
+        if (actor) url += '&actor=' + encodeURIComponent(actor);
+        if (module) url += '&module=' + encodeURIComponent(module);
+        if (actionType) url += '&actionType=' + encodeURIComponent(actionType);
+        if (from) url += '&dateFrom=' + encodeURIComponent(from + 'T00:00:00Z');
+        if (to) url += '&dateTo=' + encodeURIComponent(to + 'T23:59:59Z');
+
+        const data = await api(url);
+        renderActivity(data);
+    } catch (e) { /* toast shown */ }
+}
+
+function renderActivity(data) {
+    const tbody = document.getElementById('activity-tbody');
+    const pagination = document.getElementById('activity-pagination');
+    if (!tbody) return;
+
+    if (!data || !data.content || !data.content.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">No activity recorded yet.</td></tr>';
+        if (pagination) pagination.innerHTML = '';
+        return;
+    }
+
+    tbody.innerHTML = data.content.map(a => {
+        const time = new Date(a.occurredAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const notes = a.notes || '';
+        const entityInfo = a.entityId ? '#' + a.entityId : '—';
+        return '<tr>' +
+            '<td style="white-space:nowrap;font-size:var(--fs-xs)">' + time + '</td>' +
+            '<td style="font-weight:700">' + escapeHtml(a.actor) + '</td>' +
+            '<td>' + a.role + '</td>' +
+            '<td><span class="badge badge-outlined" style="font-size:9px">' + a.actionType + '</span></td>' +
+            '<td>' + a.module + '</td>' +
+            '<td>' + entityInfo + '</td>' +
+            '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-xs);color:var(--text-muted)" title="' + escapeHtml(notes) + '">' + escapeHtml(notes) + '</td>' +
+            '</tr>';
+    }).join('');
+
+    // Pagination
+    if (pagination) {
+        const totalPages = data.totalPages || 0;
+        const current = data.number || 0;
+        let html = '';
+        if (current > 0) html += '<button class="btn btn-sm btn-outline" onclick="activityGoTo(' + (current - 1) + ')">PREV</button> ';
+        html += '<span style="font-size:var(--fs-xs);color:var(--text-muted);margin:0 8px">Page ' + (current + 1) + ' of ' + (totalPages || 1) + '</span>';
+        if (current < totalPages - 1) html += ' <button class="btn btn-sm btn-outline" onclick="activityGoTo(' + (current + 1) + ')">NEXT</button>';
+        pagination.innerHTML = html;
+    }
+}
+
+window.activityGoTo = function(page) {
+    activityPage = page;
+    loadActivity();
+};
+
+document.getElementById('btn-activity-apply')?.addEventListener('click', function() {
+    activityPage = 0;
+    loadActivity();
+});
+
+// ═══════════════════════════════════════════
 //  USER MANAGEMENT MODULE (Admin/Owner)
 // ═══════════════════════════════════════════
 
@@ -2604,7 +2703,7 @@ function renderUserMgmt() {
             </div>
             <div class="room-card-actions" style="margin-top:12px;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
                 <button class="btn btn-outline btn-sm" onclick="openResetPwModal(${u.id},'${u.username.replace(/'/g,"\\'")}')">RESET PASSWORD</button>
-                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="confirmDeleteUser(${u.id},'${u.username.replace(/'/g,"\\'")}')">DELETE</button>
+                ${u.role === 'ROLE_ADMIN' || u.role === 'ROLE_OWNER' ? '' : '<button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="confirmDeleteUser(' + u.id + ',\'' + u.username.replace(/'/g,"\\'") + '\')">DELETE</button>'}
             </div>
         </div>
     `).join('');

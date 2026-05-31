@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hospitality.operations.domain.activity.AuditHelper;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -24,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class PayrollEmployeeController {
 
     private final PayrollEmployeeService payrollEmployeeService;
+    private final AuditHelper auditHelper;
 
     @GetMapping
     public ResponseEntity<List<PayrollEmployee>> getAll(
@@ -43,17 +45,23 @@ public class PayrollEmployeeController {
 
     @PostMapping
     public ResponseEntity<PayrollEmployee> create(@RequestBody PayrollEmployee employee) {
-        return ResponseEntity.ok(payrollEmployeeService.create(employee));
+        PayrollEmployee created = payrollEmployeeService.create(employee);
+        auditHelper.record("CREATE", "PAYROLL_EMPLOYEE", created.getId(), "Created employee: " + created.getName());
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<PayrollEmployee> update(@PathVariable Long id, @RequestBody PayrollEmployee employee) {
-        return ResponseEntity.ok(payrollEmployeeService.update(id, employee));
+        PayrollEmployee updated = payrollEmployeeService.update(id, employee);
+        auditHelper.record("UPDATE", "PAYROLL_EMPLOYEE", id, "Updated employee: " + updated.getName());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
+        PayrollEmployee prev = payrollEmployeeService.findById(id);
         payrollEmployeeService.delete(id);
+        auditHelper.record("DELETE", "PAYROLL_EMPLOYEE", id, "Deleted employee: " + prev.getName());
         return ResponseEntity.noContent().build();
     }
 

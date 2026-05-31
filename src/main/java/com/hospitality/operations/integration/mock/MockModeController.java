@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hospitality.operations.domain.activity.AuditHelper;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 public class MockModeController {
 
     private final MockModeService mockModeService;
+    private final AuditHelper auditHelper;
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> getStatus() {
@@ -26,11 +28,13 @@ public class MockModeController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> setStatus(@RequestBody Map<String, Boolean> body) {
         boolean enabled = body.getOrDefault("enabled", false);
+        boolean wasEnabled = mockModeService.isMockMode();
         if (enabled) {
             mockModeService.enableMockMode();
         } else {
             mockModeService.disableMockMode();
         }
+        auditHelper.record("TOGGLE", "MOCK_MODE", null, "enabled=" + wasEnabled, "enabled=" + enabled, "Mock mode: " + (enabled ? "enabled" : "disabled"));
         return ResponseEntity.ok(Map.of("enabled", mockModeService.isMockMode()));
     }
 }

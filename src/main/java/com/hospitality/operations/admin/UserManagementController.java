@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.hospitality.operations.auth.User;
 import com.hospitality.operations.auth.UserRepository;
 import com.hospitality.operations.auth.UserRole;
+import com.hospitality.operations.domain.activity.AuditHelper;
 import com.hospitality.operations.exception.ResourceNotFoundException;
 
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 public class UserManagementController {
 
     private final UserRepository userRepository;
+    private final AuditHelper auditHelper;
 
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
@@ -36,6 +39,21 @@ public class UserManagementController {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
         return ResponseEntity.ok(user);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, String>> deleteUser(@PathVariable Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
+
+        if (user.getRole() == UserRole.ROLE_ADMIN || user.getRole() == UserRole.ROLE_OWNER) {
+            auditHelper.record("DELETE", "USER", id, "Blocked deletion of " + user.getRole() + ": " + user.getUsername());
+            throw new IllegalArgumentException("Cannot delete " + user.getRole() + " account: " + user.getUsername());
+        }
+
+        userRepository.delete(user);
+        auditHelper.record("DELETE", "USER", id, "Deleted user: " + user.getUsername());
+        return ResponseEntity.ok(Map.of("message", "User deleted: " + user.getUsername()));
     }
 
     @PostMapping
@@ -72,7 +90,9 @@ public class UserManagementController {
                 .tenantSchema(body.getOrDefault("tenantSchema", "default"))
                 .build();
 
-        return ResponseEntity.ok(userRepository.save(user));
+        User created = userRepository.save(user);
+        auditHelper.record("CREATE", "USER", created.getId(), "Created user: " + created.getUsername() + " with role " + created.getRole());
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}/reset-password")
@@ -91,6 +111,7 @@ public class UserManagementController {
 
         user.setPasswordHash(encoder.encode(newPassword));
         userRepository.save(user);
+        auditHelper.record("UPDATE", "USER", id, "Password reset for user: " + user.getUsername());
 
         return ResponseEntity.ok(Map.of("message", "Password reset successful for user: " + user.getUsername()));
     }

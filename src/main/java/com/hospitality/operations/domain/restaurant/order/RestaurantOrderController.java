@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hospitality.operations.domain.activity.AuditHelper;
 import com.hospitality.operations.domain.restaurant.order.dto.OrderRequestDto;
 import com.hospitality.operations.domain.restaurant.order.dto.OrderResponseDto;
 
@@ -28,10 +29,12 @@ import lombok.RequiredArgsConstructor;
 public class RestaurantOrderController {
 
     private final RestaurantOrderService orderService;
+    private final AuditHelper auditHelper;
 
     @PostMapping
     public ResponseEntity<OrderResponseDto> createOrder(@Valid @RequestBody OrderRequestDto requestDto) {
         OrderResponseDto response = orderService.createOrder(requestDto);
+        auditHelper.record("CREATE", "ORDER", response.getId(), "Created order: " + response.getOrderReference());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -54,19 +57,24 @@ public class RestaurantOrderController {
     public ResponseEntity<OrderResponseDto> updateOrder(@PathVariable Long id,
                                                          @Valid @RequestBody OrderRequestDto requestDto) {
         OrderResponseDto response = orderService.updateOrder(id, requestDto);
+        auditHelper.record("UPDATE", "ORDER", id, "Updated order: " + response.getOrderReference());
         return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<OrderResponseDto> updateOrderStatus(@PathVariable Long id,
                                                                @RequestParam String status) {
+        OrderResponseDto prev = orderService.getOrderById(id);
         OrderResponseDto response = orderService.updateOrderStatus(id, status);
+        auditHelper.record("STATUS_CHANGE", "ORDER", id, "status=" + prev.getStatus(), "status=" + response.getStatus(), "Order status: " + prev.getStatus() + " \u2192 " + response.getStatus());
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
+        OrderResponseDto prev = orderService.getOrderById(id);
         orderService.deleteOrder(id);
+        auditHelper.record("DELETE", "ORDER", id, "Deleted order: " + prev.getOrderReference());
         return ResponseEntity.noContent().build();
     }
 }

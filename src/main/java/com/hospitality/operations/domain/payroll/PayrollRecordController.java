@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hospitality.operations.domain.activity.AuditHelper;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class PayrollRecordController {
 
     private final PayrollRecordService payrollRecordService;
+    private final AuditHelper auditHelper;
 
     @GetMapping("/employee/{employeeId}")
     public ResponseEntity<List<PayrollRecord>> getByEmployee(@PathVariable Long employeeId) {
@@ -36,17 +38,22 @@ public class PayrollRecordController {
         if (record.getEmployeeId() == null) {
             throw new IllegalArgumentException("employeeId is required");
         }
-        return ResponseEntity.ok(payrollRecordService.create(record.getEmployeeId(), record));
+        PayrollRecord created = payrollRecordService.create(record.getEmployeeId(), record);
+        auditHelper.record("CREATE", "PAYROLL_RECORD", created.getId(), "Created payroll record for employee #" + created.getEmployeeId());
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<PayrollRecord> update(@PathVariable Long id, @RequestBody PayrollRecord record) {
-        return ResponseEntity.ok(payrollRecordService.update(id, record));
+        PayrollRecord updated = payrollRecordService.update(id, record);
+        auditHelper.record("UPDATE", "PAYROLL_RECORD", id, "Updated payroll record for employee #" + updated.getEmployeeId());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         payrollRecordService.delete(id);
+        auditHelper.record("DELETE", "PAYROLL_RECORD", id, "Deleted payroll record #" + id);
         return ResponseEntity.noContent().build();
     }
 }

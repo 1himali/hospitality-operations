@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hospitality.operations.domain.activity.AuditHelper;
 import com.hospitality.operations.domain.restaurant.menu.dto.MenuItemRequestDto;
 import com.hospitality.operations.domain.restaurant.menu.dto.MenuItemResponseDto;
 
@@ -27,10 +28,12 @@ import lombok.RequiredArgsConstructor;
 public class MenuItemController {
 
     private final MenuItemService menuItemService;
+    private final AuditHelper auditHelper;
 
     @PostMapping
     public ResponseEntity<MenuItemResponseDto> createMenuItem(@Valid @RequestBody MenuItemRequestDto requestDto) {
         MenuItemResponseDto response = menuItemService.createMenuItem(requestDto);
+        auditHelper.record("CREATE", "MENU_ITEM", response.getId(), "Created menu item: " + response.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -64,18 +67,23 @@ public class MenuItemController {
     public ResponseEntity<MenuItemResponseDto> updateMenuItem(@PathVariable Long id,
                                                                @Valid @RequestBody MenuItemRequestDto requestDto) {
         MenuItemResponseDto response = menuItemService.updateMenuItem(id, requestDto);
+        auditHelper.record("UPDATE", "MENU_ITEM", id, "Updated menu item: " + response.getName());
         return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{id}/toggle-availability")
     public ResponseEntity<MenuItemResponseDto> toggleAvailability(@PathVariable Long id) {
+        MenuItemResponseDto prev = menuItemService.getMenuItemById(id);
         MenuItemResponseDto response = menuItemService.toggleAvailability(id);
+        auditHelper.record("TOGGLE", "MENU_ITEM", id, "available=" + prev.getAvailable(), "available=" + response.getAvailable(), "Toggled availability: " + response.getName());
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteMenuItem(@PathVariable Long id) {
+        MenuItemResponseDto prev = menuItemService.getMenuItemById(id);
         menuItemService.deleteMenuItem(id);
+        auditHelper.record("DELETE", "MENU_ITEM", id, "Deleted menu item: " + prev.getName());
         return ResponseEntity.noContent().build();
     }
 }

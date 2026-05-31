@@ -38,7 +38,7 @@
     --table-reserved-bg: #F0E6D8;
     --table-reserved-text: #3D2C2C;
 
-    /* Typography — Cafe Hana */
+    /* Typography — Himāli's Bed n Breakfast */
     --font: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --font-heading: 'Jua', 'Noto Sans', sans-serif;
     --font-secondary: 'Gaegu', 'Noto Sans', cursive;
@@ -262,7 +262,7 @@ h1, h2, h3, h4, h5, h6 { font-family: var(--font-heading); }
 }
 
 /* ═══════════════════════════════════════════
-   HUB GRID (Home / Lodging / Restaurant)
+   HUB GRID (Home / Lodging / Dining)
    ═══════════════════════════════════════════ */
 .hub-grid {
     display: grid;
