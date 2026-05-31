@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -38,6 +39,15 @@ public class BillController {
         BillResponseDto response = billService.generateBill(requestDto);
         auditHelper.record("CREATE", "BILL", response.getId(), "Generated bill: " + response.getInvoiceNumber());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<BillResponseDto> updateBill(
+            @PathVariable Long id,
+            @Valid @RequestBody BillRequestDto requestDto) {
+        BillResponseDto response = billService.updateBill(id, requestDto);
+        auditHelper.record("UPDATE", "BILL", id, "Updated bill: " + response.getInvoiceNumber());
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")

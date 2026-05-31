@@ -3,6 +3,8 @@ package com.hospitality.operations.domain.restaurant.billing.dto;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.hospitality.operations.domain.restaurant.billing.BillStatus;
+
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -45,6 +47,8 @@ public class BillRequestDto {
 
     @Min(value = 0, message = "Discount must be non-negative")
     private BigDecimal discount;
+
+    private BillStatus status;
 
     private List<Long> selectedRoomIds;
 

@@ -13,6 +13,8 @@ public interface BillService {
 
     BillResponseDto generateBill(BillRequestDto requestDto);
 
+    BillResponseDto updateBill(Long id, BillRequestDto requestDto);
+
     BillResponseDto getBillById(Long id);
 
     BillResponseDto getBillByOrderId(Long orderId);

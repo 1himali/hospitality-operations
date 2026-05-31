@@ -1016,6 +1016,67 @@
     </div>
 
     <!-- ══════════════════════════════════════
+         MODAL: Invoice Edit Form
+         ══════════════════════════════════════ -->
+    <div class="modal-overlay" id="inv-edit-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="inv-edit-title">EDIT INVOICE</h2>
+                <button class="modal-close" onclick="closeModal('inv-edit-modal')">&times;</button>
+            </div>
+            <form id="inv-edit-form">
+                <input type="hidden" id="inv-edit-id">
+                <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+                    <div class="form-row" style="display:flex;gap:12px">
+                        <div class="form-group" style="flex:1">
+                            <label>CUSTOMER NAME</label>
+                            <input type="text" id="inv-edit-customer" class="input" maxlength="200">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>PHONE</label>
+                            <input type="text" id="inv-edit-phone" class="input" maxlength="20">
+                        </div>
+                    </div>
+                    <div class="form-row" style="display:flex;gap:12px">
+                        <div class="form-group" style="flex:1">
+                            <label>EMAIL</label>
+                            <input type="email" id="inv-edit-email" class="input" maxlength="200">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>SERVER</label>
+                            <input type="text" id="inv-edit-server" class="input" maxlength="100">
+                        </div>
+                    </div>
+                    <div class="form-row" style="display:flex;gap:12px">
+                        <div class="form-group" style="flex:1">
+                            <label>DISCOUNT (₹)</label>
+                            <input type="number" id="inv-edit-discount" class="input" min="0" step="0.01" value="0">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>STATUS</label>
+                            <select id="inv-edit-status" class="input">
+                                <option value="PAID">PAID</option>
+                                <option value="UNPAID">UNPAID</option>
+                                <option value="REFUNDED">REFUNDED</option>
+                                <option value="CANCELLED">CANCELLED</option>
+                                <option value="VOID">VOID</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>NOTES</label>
+                        <textarea id="inv-edit-notes" class="input" style="resize:vertical;min-height:40px" maxlength="2000"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions" style="padding:16px 0 0">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('inv-edit-modal')">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" id="inv-edit-submit-btn">UPDATE INVOICE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
          MODAL: Room Form
          ══════════════════════════════════════ -->
     <div class="modal-overlay" id="room-modal">

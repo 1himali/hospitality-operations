@@ -1857,19 +1857,28 @@ window.viewInvoiceDetail = async function(id) {
                 `<tr><td>${item.quantity}</td><td>${item.description}</td><td>${fmtCurrency(item.unitPrice)}</td><td>${fmtCurrency(item.price)}</td></tr>`
               ).join('')
             : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No line items</td></tr>';
-        const ref = inv.orderReference || 'INV-' + String(inv.id).padStart(4, '0');
+        const ref = inv.invoiceNumber || inv.orderReference || 'INV-' + String(inv.id).padStart(4, '0');
+        const customerInfo = (inv.customerName || inv.phoneNumber || inv.email)
+            ? `<div class="receipt-customer" style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border-light);font-size:var(--fs-sm)">
+                ${inv.customerName ? '<div><strong>GUEST:</strong> ' + inv.customerName + '</div>' : ''}
+                ${inv.phoneNumber ? '<div><strong>PHONE:</strong> ' + inv.phoneNumber + '</div>' : ''}
+                ${inv.email ? '<div><strong>EMAIL:</strong> ' + inv.email + '</div>' : ''}
+                ${inv.notes ? '<div style="margin-top:4px;color:var(--text-muted)"><em>' + inv.notes + '</em></div>' : ''}
+              </div>` : '';
         body.innerHTML = `
             <div class="billing-receipt" style="max-width:500px;margin:0 auto">
                 <div class="receipt-header">
                     <div>
                         <div class="receipt-table-name">INVOICE</div>
                         <div>${inv.serverName ? 'Server: ' + inv.serverName : ''}</div>
+                        <div style="font-size:var(--fs-xs);color:var(--text-muted)">${inv.status || ''}</div>
                     </div>
                     <div>
                         <div>${ref}</div>
                         <div class="receipt-date">${fmtDate(inv.createdAt)}</div>
                     </div>
                 </div>
+                ${customerInfo}
                 <table class="receipt-items">
                     <thead><tr><th>QTY</th><th>ITEM</th><th>PRICE</th><th>TOTAL</th></tr></thead>
                     <tbody>${items}</tbody>
@@ -1881,10 +1890,57 @@ window.viewInvoiceDetail = async function(id) {
                     <div class="receipt-total-row total-due"><span>TOTAL DUE</span><span>${fmtCurrency(inv.totalDue)}</span></div>
                 </div>
                 ${inv.aiDescription ? '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-light);font-size:var(--fs-xs);color:var(--text-muted);font-style:italic">' + inv.aiDescription + '</div>' : ''}
+                <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-light);display:flex;gap:8px;justify-content:flex-end">
+                    <button class="btn btn-outline btn-sm" onclick="openEditInvoice(${inv.id})">EDIT</button>
+                </div>
             </div>`;
         openModal('inv-detail-modal');
     } catch (e) { /* toast shown */ }
 };
+
+let editingInvoiceId = null;
+
+window.openEditInvoice = async function(id) {
+    try {
+        const inv = await api(`${API.bills}/${id}`);
+        editingInvoiceId = id;
+        document.getElementById('inv-edit-id').value = id;
+        document.getElementById('inv-edit-title').textContent = 'EDIT INVOICE ' + (inv.invoiceNumber || '#' + id);
+        document.getElementById('inv-edit-customer').value = inv.customerName || '';
+        document.getElementById('inv-edit-phone').value = inv.phoneNumber || '';
+        document.getElementById('inv-edit-email').value = inv.email || '';
+        document.getElementById('inv-edit-server').value = inv.serverName || '';
+        document.getElementById('inv-edit-discount').value = inv.discount || 0;
+        document.getElementById('inv-edit-status').value = inv.status || 'PAID';
+        document.getElementById('inv-edit-notes').value = inv.notes || '';
+        closeModal('inv-detail-modal');
+        openModal('inv-edit-modal');
+    } catch (e) { /* toast shown */ }
+};
+
+// Invoice edit form submit
+document.getElementById('inv-edit-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = editingInvoiceId;
+    if (!id) { closeModal('inv-edit-modal'); return; }
+    const body = {
+        customerName: document.getElementById('inv-edit-customer').value.trim() || null,
+        phoneNumber: document.getElementById('inv-edit-phone').value.trim() || null,
+        email: document.getElementById('inv-edit-email').value.trim() || null,
+        serverName: document.getElementById('inv-edit-server').value.trim() || null,
+        discount: parseFloat(document.getElementById('inv-edit-discount').value) || 0,
+        status: document.getElementById('inv-edit-status').value,
+        notes: document.getElementById('inv-edit-notes').value.trim() || null,
+        additionalItems: []
+    };
+    try {
+        await api(`${API.bills}/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+        toast('Invoice updated');
+        editingInvoiceId = null;
+        closeModal('inv-edit-modal');
+        loadInvoiceHistory(invData.number || 0);
+    } catch (e) { /* toast shown */ }
+});
 
 // Invoice date filter change
 document.getElementById('inv-date-filter')?.addEventListener('change', function() {
@@ -1962,7 +2018,14 @@ function renderInventoryGrid() {
                 <div class="room-card-row"><span class="room-card-label">TYPE:</span><span class="room-card-value">${item.type}</span></div>
                 <div class="room-card-row"><span class="room-card-label">CATEGORY:</span><span class="room-card-value">${item.category}</span></div>
                 <div class="room-card-row"><span class="room-card-label">QTY:</span><span class="room-card-value">${item.quantity} ${item.unit}</span></div>
-                <div class="room-card-row"><span class="room-card-label">REORDER:</span><span class="room-card-value">${item.reorderLevel} ${item.unit}</span></div>
+                <div class="room-card-row"><span class="room-card-label">REORDER:</span><span class="room-card-value">
+                    <span style="display:inline-flex;align-items:center;gap:6px">
+                        <button class="btn btn-outline btn-sm" onclick="adjustReorderLevel(${item.id}, -1)" style="padding:0 4px;min-width:22px;height:20px;line-height:16px;font-size:12px;color:var(--danger);border-color:var(--border)">−</button>
+                        <span id="reorder-val-${item.id}" style="min-width:20px;text-align:center;font-weight:700">${item.reorderLevel}</span>
+                        <button class="btn btn-outline btn-sm" onclick="adjustReorderLevel(${item.id}, 1)" style="padding:0 4px;min-width:22px;height:20px;line-height:16px;font-size:12px;color:var(--success);border-color:var(--border)">+</button>
+                        ${item.unit}
+                    </span>
+                </span></div>
                 ${item.notes ? `<div class="room-card-row"><span class="room-card-label">NOTES:</span><span class="room-card-value">${item.notes}</span></div>` : ''}
             </div>
             <div class="room-card-actions" style="margin-top:12px;display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
@@ -1984,6 +2047,28 @@ window.adjustInvQty = async function(id, delta) {
         if (idx >= 0) inventoryData[idx] = updated;
         renderInventoryGrid();
         toast(delta > 0 ? 'Stock increased' : 'Stock decreased');
+    } catch (e) { /* toast shown */ }
+};
+
+window.adjustReorderLevel = async function(id, delta) {
+    const item = inventoryData.find(i => i.id === id);
+    if (!item) return;
+    const newLevel = Math.max(0, (item.reorderLevel || 0) + delta);
+    try {
+        const body = {
+            name: item.name,
+            type: item.type,
+            category: item.category,
+            quantity: item.quantity,
+            reorderLevel: newLevel,
+            unit: item.unit,
+            notes: item.notes || null
+        };
+        const updated = await api(`${API.inventory}/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+        const idx = inventoryData.findIndex(i => i.id === id);
+        if (idx >= 0) inventoryData[idx] = updated;
+        renderInventoryGrid();
+        toast('Reorder level set to ' + newLevel);
     } catch (e) { /* toast shown */ }
 };
 

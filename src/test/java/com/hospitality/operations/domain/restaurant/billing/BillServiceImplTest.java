@@ -30,6 +30,8 @@ import com.hospitality.operations.domain.restaurant.table.DiningTableRepository;
 import com.hospitality.operations.domain.room.RoomRepository;
 import com.hospitality.operations.exception.ResourceNotFoundException;
 
+import jakarta.persistence.EntityManager;
+
 @ExtendWith(MockitoExtension.class)
 class BillServiceImplTest {
 
@@ -54,12 +56,15 @@ class BillServiceImplTest {
     @Mock
     private InvoiceDescriptionService invoiceDescriptionService;
 
+    @Mock
+    private EntityManager entityManager;
+
     private BillServiceImpl billService;
 
     @BeforeEach
     void setUp() {
         billService = new BillServiceImpl(billRepository, billLineItemRepository, orderRepository,
-                menuItemRepository, roomRepository, diningTableRepository, invoiceDescriptionService);
+                menuItemRepository, roomRepository, diningTableRepository, invoiceDescriptionService, entityManager);
     }
 
     @Test

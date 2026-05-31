@@ -31,6 +31,7 @@ import com.hospitality.operations.domain.room.Room;
 import com.hospitality.operations.domain.room.RoomRepository;
 import com.hospitality.operations.exception.ResourceNotFoundException;
 
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -48,6 +49,7 @@ public class BillServiceImpl implements BillService {
     private final RoomRepository roomRepository;
     private final DiningTableRepository diningTableRepository;
     private final InvoiceDescriptionService invoiceDescriptionService;
+    private final EntityManager entityManager;
 
     @Override
     @Transactional
@@ -242,6 +244,79 @@ public class BillServiceImpl implements BillService {
         billLineItemRepository.saveAll(persistedItems);
 
         return BillMapper.toDto(saved, lineItemDtos);
+    }
+
+    @Override
+    @Transactional
+    public BillResponseDto updateBill(Long id, BillRequestDto requestDto) {
+        Bill bill = billRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Bill", "id", id));
+
+        bill.setOrderId(requestDto.getOrderId());
+        bill.setServerName(requestDto.getServerName());
+        bill.setCustomerName(requestDto.getCustomerName());
+        bill.setPhoneNumber(requestDto.getPhoneNumber());
+        bill.setEmail(requestDto.getEmail());
+        bill.setNotes(requestDto.getNotes());
+        if (requestDto.getDiscount() != null) {
+            bill.setDiscount(requestDto.getDiscount());
+        }
+        if (requestDto.getStatus() != null) {
+            bill.setStatus(requestDto.getStatus());
+        }
+
+        // Recalculate financials
+        BigDecimal subtotal = BigDecimal.ZERO;
+        List<BillResponseDto.LineItemDto> lineItemDtos = new ArrayList<>();
+
+        // Additional items
+        List<BillRequestDto.AdditionalItemDto> additionalItems = requestDto.getAdditionalItems();
+        if (additionalItems != null) {
+            for (BillRequestDto.AdditionalItemDto item : additionalItems) {
+                BigDecimal total = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                BillResponseDto.LineItemDto li = BillResponseDto.LineItemDto.builder()
+                        .itemType("CUSTOM").itemId(null)
+                        .quantity(item.getQuantity())
+                        .description(item.getDescription())
+                        .unitPrice(item.getUnitPrice())
+                        .price(total).build();
+                lineItemDtos.add(li);
+                subtotal = subtotal.add(total);
+            }
+        }
+
+        // If no additional items, keep original line items
+        if (lineItemDtos.isEmpty()) {
+            subtotal = bill.getSubtotal();
+        } else {
+            BigDecimal taxAmount = subtotal.multiply(bill.getTaxRate()).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal totalDue = subtotal.add(taxAmount).subtract(bill.getDiscount()).setScale(2, RoundingMode.HALF_UP);
+            bill.setSubtotal(subtotal);
+            bill.setTaxAmount(taxAmount);
+            bill.setTotalDue(totalDue);
+
+            billLineItemRepository.deleteByBillId(bill.getId());
+            entityManager.flush();
+            List<BillLineItem> newItems = lineItemDtos.stream().map(liDto ->
+                BillLineItem.builder()
+                        .bill(bill)
+                        .itemType(liDto.getItemType())
+                        .itemId(liDto.getItemId())
+                        .description(liDto.getDescription())
+                        .quantity(liDto.getQuantity())
+                        .unitPrice(liDto.getUnitPrice())
+                        .totalPrice(liDto.getPrice())
+                        .tenantSchema(bill.getTenantSchema())
+                        .build()
+            ).toList();
+            billLineItemRepository.saveAll(newItems);
+        }
+
+        Bill saved = billRepository.save(bill);
+        List<BillResponseDto.LineItemDto> updatedLineItems = buildLineItemsFromDb(saved);
+        BillResponseDto dto = BillMapper.toDto(saved, updatedLineItems);
+        enrichTableNumber(dto);
+        return dto;
     }
 
     @Override
